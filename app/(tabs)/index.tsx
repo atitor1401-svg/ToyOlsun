@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { supabase } from '../supabase';
 import { useWindowDimensions, ActivityIndicator } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import PartnerPortal from './PartnerPortal';
 
 interface Review {
   id: string;
@@ -39,6 +40,7 @@ export interface ServiceItem {
     capacity?: string;
     images?: string[];
     telegram_chat_id?: string;
+    owner_id?: string;
 }
 
 const TRANSLATIONS = {
@@ -81,6 +83,36 @@ const TRANSLATIONS = {
         sortRating: 'Reytinq', sortAsc: 'Qiymət (↑)', sortDesc: 'Qiymət (↓)',
         modalSuccessTitle: 'Müraciət Qəbul Edildi',
         modalSuccessDesc: 'AZN məbləğindəki smetanız fərdi menecerə göndərildi. Yarım saat ərzində sizinlə əlaqə saxlayacağıq.',
+        partnerBtn: '+ Partnyor ol',
+        myAccountBtn: '👤 Şəxsi Kabinetim',
+        partnerFormTitle: 'Partnyor Qeydiyyatı',
+        partnerFormSub: 'Xidmətinizi əlavə edin — yoxlanışdan sonra kataloqda görünəcək',
+        partnerName: 'Xidmətin adı',
+        partnerNamePh: 'Məs: Elux Event Hall',
+        partnerCategory: 'Kateqoriya',
+        partnerTags: 'Xüsusiyyətlər (uyğun olanları seçin)',
+        partnerEventTypes: 'Hansı tədbirlərə uyğundur',
+        partnerPrice: 'Qiymət (AZN)',
+        partnerPricePh: 'Məs: 150',
+        partnerUnit: 'Ölçü vahidi',
+        partnerAddress: 'Ünvan',
+        partnerAddressPh: 'Şəhər, küçə',
+        partnerPhone: 'Əlaqə telefonu',
+        partnerDescription: 'Təsvir',
+        partnerDescriptionPh: 'Xidmətiniz haqqında qısa məlumat',
+        partnerCapacity: 'Tutum (istəyə bağlı)',
+        partnerCapacityPh: 'Məs: 200-500',
+        partnerImageUrl: 'Şəkil',
+        partnerImageUrlPh: 'https://...',
+        partnerImagePick: '📷 Şəkil seç',
+        partnerImageNeedTitle: 'Şəkil əlavə etməzdən əvvəl xidmətin adını yazın',
+        partnerImageChange: 'Dəyiş',
+        partnerSubmit: 'MÜRACİƏT GÖNDƏR',
+        partnerSubmitting: 'GÖNDƏRİLİR...',
+        partnerSuccessTitle: 'Müraciətiniz Qəbul Edildi',
+        partnerSuccessDesc: 'Xidmətiniz yoxlanışdan sonra kataloqda görünəcək. Bu adətən 1-2 iş günü çəkir.',
+        partnerRequired: 'Zəhmət olmasa bütün məcburi xanaları doldurun',
+        catVenuesShort: 'Zal', catArtistsShort: 'Artist', catMediaShort: 'Foto/Video', catCarsShort: 'Kortej',
     },
     ru: {
         welcomeSub: 'ВЫБЕРИТЕ ТИП МЕРОПРИЯТИЯ',
@@ -121,6 +153,36 @@ const TRANSLATIONS = {
         sortRating: 'Рейтинг', sortAsc: 'Цена (↑)', sortDesc: 'Цена (↓)',
         modalSuccessTitle: 'Заявка принята',
         modalSuccessDesc: 'AZN отправлена персональному менеджеру. Мы свяжемся с вами в течение 30 минут.',
+        partnerBtn: '+ Стать партнером',
+        myAccountBtn: '👤 Мой кабинет',
+        partnerFormTitle: 'Регистрация партнера',
+        partnerFormSub: 'Добавьте свою услугу — появится в каталоге после проверки',
+        partnerName: 'Название услуги',
+        partnerNamePh: 'Напр: Elux Event Hall',
+        partnerCategory: 'Категория',
+        partnerTags: 'Особенности (выберите подходящие)',
+        partnerEventTypes: 'Подходит для мероприятий',
+        partnerPrice: 'Цена (AZN)',
+        partnerPricePh: 'Напр: 150',
+        partnerUnit: 'Единица измерения',
+        partnerAddress: 'Адрес',
+        partnerAddressPh: 'Город, улица',
+        partnerPhone: 'Контактный телефон',
+        partnerDescription: 'Описание',
+        partnerDescriptionPh: 'Краткая информация о вашей услуге',
+        partnerCapacity: 'Вместимость (необязательно)',
+        partnerCapacityPh: 'Напр: 200-500',
+        partnerImageUrl: 'Фото',
+        partnerImageUrlPh: 'https://...',
+        partnerImagePick: '📷 Выбрать фото',
+        partnerImageNeedTitle: 'Сначала укажите название услуги',
+        partnerImageChange: 'Изменить',
+        partnerSubmit: 'ОТПРАВИТЬ ЗАЯВКУ',
+        partnerSubmitting: 'ОТПРАВКА...',
+        partnerSuccessTitle: 'Заявка принята',
+        partnerSuccessDesc: 'Ваша услуга появится в каталоге после проверки. Обычно это занимает 1-2 рабочих дня.',
+        partnerRequired: 'Пожалуйста, заполните все обязательные поля',
+        catVenuesShort: 'Зал', catArtistsShort: 'Артист', catMediaShort: 'Фото/Видео', catCarsShort: 'Кортеж',
     },
     en: {
         welcomeSub: 'SELECT YOUR EVENT TYPE',
@@ -161,12 +223,81 @@ const TRANSLATIONS = {
         sortRating: 'Rating', sortAsc: 'Price (↑)', sortDesc: 'Price (↓)',
         modalSuccessTitle: 'Request Received',
         modalSuccessDesc: 'AZN has been sent to your personal manager. We will contact you within 30 minutes.',
+        partnerBtn: '+ Become a partner',
+        myAccountBtn: '👤 My Account',
+        partnerFormTitle: 'Partner Registration',
+        partnerFormSub: 'Add your service — it will appear in the catalog after review',
+        partnerName: 'Service name',
+        partnerNamePh: 'E.g: Elux Event Hall',
+        partnerCategory: 'Category',
+        partnerTags: 'Features (select those that apply)',
+        partnerEventTypes: 'Suitable for events',
+        partnerPrice: 'Price (AZN)',
+        partnerPricePh: 'E.g: 150',
+        partnerUnit: 'Unit',
+        partnerAddress: 'Address',
+        partnerAddressPh: 'City, street',
+        partnerPhone: 'Contact phone',
+        partnerDescription: 'Description',
+        partnerDescriptionPh: 'Brief information about your service',
+        partnerCapacity: 'Capacity (optional)',
+        partnerCapacityPh: 'E.g: 200-500',
+        partnerImageUrl: 'Photo',
+        partnerImageUrlPh: 'https://...',
+        partnerImagePick: '📷 Pick a photo',
+        partnerImageNeedTitle: 'Please enter the service name first',
+        partnerImageChange: 'Change',
+        partnerSubmit: 'SUBMIT REQUEST',
+        partnerSubmitting: 'SUBMITTING...',
+        partnerSuccessTitle: 'Request Received',
+        partnerSuccessDesc: 'Your service will appear in the catalog after review. This usually takes 1-2 business days.',
+        partnerRequired: 'Please fill in all required fields',
+        catVenuesShort: 'Venue', catArtistsShort: 'Artist', catMediaShort: 'Photo/Video', catCarsShort: 'Cortege',
     }
 };
 
 const FONTS = {
     serif: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     sans: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif',
+};
+
+const CATEGORY_TAGS: Record<string, { az: string; ru: string; en: string }[]> = {
+    venues: [
+        { az: 'VIP Səviyyə', ru: 'VIP уровень', en: 'VIP Level' },
+        { az: 'Dövlət Sarayı', ru: 'Дворец', en: 'Palace' },
+        { az: 'Panoram', ru: 'Панорама', en: 'Panoramic View' },
+        { az: 'Açıq Hava', ru: 'На улице', en: 'Outdoor' },
+        { az: 'Premium Zal', ru: 'Премиум зал', en: 'Premium Hall' },
+        { az: 'Yay Terrası', ru: 'Летняя терраса', en: 'Summer Terrace' },
+        { az: 'Milli Üslub', ru: 'Нац. стиль', en: 'National Style' },
+        { az: 'Restoran & Əyləncə', ru: 'Ресторан и развлечения', en: 'Restaurant & Fun' },
+    ],
+    artists: [
+        { az: 'Pop Ulduzu', ru: 'Поп-звезда', en: 'Pop Star' },
+        { az: 'Canlı Səs', ru: 'Живой вокал', en: 'Live Vocal' },
+        { az: 'Solo Müğənni', ru: 'Солист', en: 'Solo Singer' },
+        { az: 'Xalq Artisti', ru: 'Народный артист', en: 'People\'s Artist' },
+        { az: 'DJ', ru: 'DJ', en: 'DJ' },
+        { az: 'Toastmaster', ru: 'Тамада', en: 'Toastmaster' },
+        { az: 'Canlı Orkestr', ru: 'Живой оркестр', en: 'Live Orchestra' },
+        { az: 'Milli Ansambl', ru: 'Нац. ансамбль', en: 'National Ensemble' },
+        { az: 'Tam Proqram', ru: 'Полная программа', en: 'Full Program' },
+    ],
+    media: [
+        { az: 'Peşəkar Fotoqraf', ru: 'Профессиональный фотограф', en: 'Professional Photographer' },
+        { az: '4K Kino', ru: '4K видео', en: '4K Video' },
+        { az: 'Aerofoto', ru: 'Аэросъёмка', en: 'Drone Footage' },
+        { az: 'Studiya Çəkilişi', ru: 'Студийная съёмка', en: 'Studio Shoot' },
+        { az: 'Foto Albom', ru: 'Фотоальбом', en: 'Photo Album' },
+        { az: 'Toy Çəkilişi', ru: 'Свадебная съёмка', en: 'Wedding Shoot' },
+    ],
+    cars: [
+        { az: 'Rolls-Royce', ru: 'Rolls-Royce', en: 'Rolls-Royce' },
+        { az: 'Şofer Daxil', ru: 'С водителем', en: 'With Driver' },
+        { az: 'Bəzədilmiş Salon', ru: 'Украшенный салон', en: 'Decorated Interior' },
+        { az: 'Ağ Rəng', ru: 'Белый цвет', en: 'White Color' },
+        { az: 'Premium Marka', ru: 'Премиум марка', en: 'Premium Brand' },
+    ],
 };
 
 const formatCurrency = (val: number): string => val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -226,6 +357,10 @@ export default function LuxuryApp() {
     const [sortBy, setSortBy] = useState<SortOption>('rating');
     const [cart, setCart] = useState<ServiceItem[]>([]);
 
+    // --- Partner portal ---
+    const [showPartnerPortal, setShowPartnerPortal] = useState<boolean>(false);
+    const [partnerLoggedIn, setPartnerLoggedIn] = useState<boolean>(false);
+
     const translateY = React.useRef(new Animated.Value(0)).current;
     const panResponder = React.useRef(
         PanResponder.create({
@@ -247,6 +382,14 @@ export default function LuxuryApp() {
 
     const { width } = useWindowDimensions();
     const t = TRANSLATIONS[lang];
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data }) => setPartnerLoggedIn(!!data.session));
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+            setPartnerLoggedIn(!!newSession);
+        });
+        return () => { listener.subscription.unsubscribe(); };
+    }, []);
 
     useEffect(() => {
     async function fetchServices() {
@@ -292,6 +435,7 @@ const { data, error } = await Promise.race([
 const sendToTelegram = async (): Promise<boolean> => {
         if (submitting) return false;
         setSubmitting(true);
+        let telegramOk = false;
         try {
             const { data, error } = await supabase.functions.invoke('submit-order', {
                 body: {
@@ -305,13 +449,44 @@ const sendToTelegram = async (): Promise<boolean> => {
                 }
             });
             if (error) throw error;
-            return true;
+            telegramOk = true;
         } catch (e) {
-            console.error('Order submission error:', e);
-            return false;
+            console.error('Order submission (Telegram) error:', e);
+        }
+
+        // Always attempt to record one order row per cart item, so each partner sees their own orders
+        // (independent of whether the Telegram function succeeded)
+        let orderOk = false;
+        try {
+            const orderRows = cart.map(item => {
+                const itemPrice = item.category === 'venues' ? item.price * parsedGuests : item.price;
+                return {
+                    service_id: item.id,
+                    service_owner_id: item.owner_id || null,
+                    service_title: item.title,
+                    customer_name: fullName,
+                    customer_phone: phone,
+                    event_date: formattedDate,
+                    guests_count: parsedGuests,
+                    item_price: itemPrice,
+                    status: 'new',
+                    lang,
+                };
+            });
+            if (orderRows.length > 0) {
+                const { error: orderError } = await supabase.from('orders').insert(orderRows);
+                if (orderError) console.error('Order record insert error:', orderError);
+                else orderOk = true;
+            } else {
+                orderOk = true;
+            }
+        } catch (orderErr) {
+            console.error('Order record insert error:', orderErr);
         } finally {
             setSubmitting(false);
         }
+
+        return telegramOk || orderOk;
     };
 
     const filteredServices = useMemo(() => {
@@ -339,8 +514,6 @@ const sendToTelegram = async (): Promise<boolean> => {
         translateY.setValue(0);
         setDetailModalVisible(true);
     };
-
-
 
     const getEventTitle = useCallback(() => {
         switch (selectedEventType) {
@@ -383,6 +556,10 @@ const sendToTelegram = async (): Promise<boolean> => {
                         </TouchableOpacity>
                     ))}
                 </View>
+                <TouchableOpacity style={partnerLoggedIn ? styles.myAccountBtnWelcome : styles.partnerLinkWelcome} onPress={() => setShowPartnerPortal(true)}>
+                    <Text style={partnerLoggedIn ? styles.myAccountBtnWelcomeText : styles.partnerLinkWelcomeText}>{partnerLoggedIn ? t.myAccountBtn : t.partnerBtn}</Text>
+                </TouchableOpacity>
+                <PartnerPortal lang={lang} visible={showPartnerPortal} onClose={() => setShowPartnerPortal(false)} />
             </SafeAreaView>
         );
     }
@@ -719,6 +896,8 @@ const sendToTelegram = async (): Promise<boolean> => {
                     </View>
                 </TouchableOpacity>
             </Modal>
+
+            <PartnerPortal lang={lang} visible={showPartnerPortal} onClose={() => setShowPartnerPortal(false)} />
         </SafeAreaView>
     );
 }
@@ -744,6 +923,37 @@ const styles = StyleSheet.create({
     topHeader: { alignItems: 'center', paddingTop: 10, paddingBottom: 12, backgroundColor: '#FAF8F5', borderBottomWidth: 1, borderBottomColor: '#EFECE6', position: 'relative' },
     changeEventBtn: { position: 'absolute', left: 16, top: 12 },
     changeEventText: { fontSize: 14, color: '#8A7E75', fontWeight: '600' },
+    partnerBtn: { position: 'absolute', right: 16, top: 12, backgroundColor: '#2C2623', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 14 },
+    partnerBtnText: { fontSize: 12, color: '#D4AF37', fontWeight: '700' },
+    partnerLinkWelcome: { alignSelf: 'center', marginTop: 22, paddingVertical: 8, paddingHorizontal: 6 },
+    partnerLinkWelcomeText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textDecorationLine: 'underline' },
+    myAccountBtnWelcome: { alignSelf: 'center', marginTop: 22, backgroundColor: '#2C2623', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20 },
+    myAccountBtnWelcomeText: { fontSize: 13, color: '#D4AF37', fontWeight: '700' },
+    partnerFormSub: { fontSize: 12, color: '#8A7E75', marginBottom: 18, lineHeight: 17 },
+    partnerLabel: { fontSize: 11, fontWeight: '700', color: '#6A625C', textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
+    partnerInput: { backgroundColor: '#FAF8F5', borderWidth: 1, borderColor: '#EFECE6', borderRadius: 8, padding: 12, fontSize: 14, color: '#2C2623' },
+    partnerCatRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    partnerCatChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#FAF8F5', borderWidth: 1, borderColor: '#EFECE6' },
+    partnerCatChipActive: { backgroundColor: '#2C2623', borderColor: '#2C2623' },
+    partnerCatChipText: { fontSize: 12, color: '#6A625C', fontWeight: '600' },
+    partnerCatChipTextActive: { color: '#D4AF37' },
+    partnerTagChip: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 16, backgroundColor: '#FAF8F5', borderWidth: 1, borderColor: '#EFECE6' },
+    partnerTagChipActive: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
+    partnerTagChipText: { fontSize: 11, color: '#6A625C', fontWeight: '600' },
+    partnerTagChipTextActive: { color: '#2C2623' },
+    partnerSuccessCheck: { fontSize: 40, color: '#D4AF37', fontWeight: '700', marginBottom: 10 },
+    partnerImagePickBtn: { backgroundColor: '#FAF8F5', borderWidth: 1.5, borderColor: '#D4AF37', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 24, alignItems: 'center', justifyContent: 'center' },
+    partnerImagePickBtnText: { fontSize: 13, fontWeight: '700', color: '#2C2623' },
+    partnerImagePreviewWrap: { position: 'relative', borderRadius: 12, overflow: 'hidden' },
+    partnerImagePreview: { width: '100%', height: 160, borderRadius: 12, backgroundColor: '#EFECE6' },
+    partnerImageChangeBtn: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(44,38,35,0.85)', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 14 },
+    partnerImageChangeBtnText: { color: '#D4AF37', fontSize: 11, fontWeight: '700' },
+    partnerImageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+    partnerImageGridItem: { width: '31%', aspectRatio: 4/5, borderRadius: 10, overflow: 'hidden', position: 'relative', backgroundColor: '#EFECE6' },
+    partnerImageGridImg: { width: '100%', height: '100%' },
+    partnerImageRemoveBtn: { position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(44,38,35,0.85)', justifyContent: 'center', alignItems: 'center' },
+    partnerImageRemoveBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+    partnerImageHint: { fontSize: 11, color: '#B0392C', marginTop: 6 },
     scrollArea: { flex: 1 },
     scrollContent: { padding: 16, paddingBottom: 80 },
     configCard: { backgroundColor: '#FFF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#EFECE6', marginBottom: 16 },
