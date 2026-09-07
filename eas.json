@@ -11,8 +11,9 @@
     "preview": {
       "distribution": "internal"
     },
-    "production": {
+        "production": {
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK": "1"
       }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     StyleSheet, Text, View, TextInput, TouchableOpacity,
     ScrollView, StatusBar, Image, Modal, Platform, Linking,
-    SafeAreaView, PanResponder, Animated, KeyboardAvoidingView
+    SafeAreaView, PanResponder, Animated, KeyboardAvoidingView, AppState
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../supabase';
@@ -21,7 +21,7 @@ interface Review {
 
 export type EventType = 'wedding' | 'khyna' | 'birthday';
 export type SortOption = 'rating' | 'asc' | 'desc';
-export type CategoryFilter = 'all' | 'venues' | 'artists' | 'media' | 'cars';
+export type CategoryFilter = 'all' | 'venues' | 'artists' | 'media' | 'cars' | 'wedding_dress' | 'flowers' | 'tourism';
 export type Language = 'az' | 'ru' | 'en';
 
 export interface ServiceItem {
@@ -43,6 +43,57 @@ export interface ServiceItem {
     owner_id?: string;
 }
 
+const TAG_ID_LABELS: Record<string, { az: string; ru: string; en: string }> = {
+    vip_level: { az: 'VIP Səviyyə', ru: 'VIP уровень', en: 'VIP Level' },
+    palace: { az: 'Dövlət Sarayı', ru: 'Дворец', en: 'Palace' },
+    panoramic: { az: 'Panoram', ru: 'Панорама', en: 'Panoramic View' },
+    outdoor: { az: 'Açıq Hava', ru: 'На улице', en: 'Outdoor' },
+    premium_hall: { az: 'Premium Zal', ru: 'Премиум зал', en: 'Premium Hall' },
+    summer_terrace: { az: 'Yay Terrası', ru: 'Летняя терраса', en: 'Summer Terrace' },
+    national_style: { az: 'Milli Üslub', ru: 'Нац. стиль', en: 'National Style' },
+    restaurant_fun: { az: 'Restoran & Əyləncə', ru: 'Ресторан и развлечения', en: 'Restaurant & Fun' },
+    pop_star: { az: 'Pop Ulduzu', ru: 'Поп-звезда', en: 'Pop Star' },
+    live_vocal: { az: 'Canlı Səs', ru: 'Живой вокал', en: 'Live Vocal' },
+    solo_singer: { az: 'Solo Müğənni', ru: 'Солист', en: 'Solo Singer' },
+    peoples_artist: { az: 'Xalq Artisti', ru: 'Народный артист', en: 'People\'s Artist' },
+    dj: { az: 'DJ', ru: 'DJ', en: 'DJ' },
+    toastmaster: { az: 'Toastmaster', ru: 'Тамада', en: 'Toastmaster' },
+    live_orchestra: { az: 'Canlı Orkestr', ru: 'Живой оркестр', en: 'Live Orchestra' },
+    national_ensemble: { az: 'Milli Ansambl', ru: 'Нац. ансамбль', en: 'National Ensemble' },
+    full_program: { az: 'Tam Proqram', ru: 'Полная программа', en: 'Full Program' },
+    pro_photographer: { az: 'Peşəkar Fotoqraf', ru: 'Профессиональный фотограф', en: 'Professional Photographer' },
+    '4k_video': { az: '4K Kino', ru: '4K видео', en: '4K Video' },
+    drone_footage: { az: 'Aerofoto', ru: 'Аэросъёмка', en: 'Drone Footage' },
+    studio_shoot: { az: 'Studiya Çəkilişi', ru: 'Студийная съёмка', en: 'Studio Shoot' },
+    photo_album: { az: 'Foto Albom', ru: 'Фотоальбом', en: 'Photo Album' },
+    wedding_shoot: { az: 'Toy Çəkilişi', ru: 'Свадебная съёмка', en: 'Wedding Shoot' },
+    rolls_royce: { az: 'Rolls-Royce', ru: 'Rolls-Royce', en: 'Rolls-Royce' },
+    with_driver: { az: 'Şofer Daxil', ru: 'С водителем', en: 'With Driver' },
+    decorated_interior: { az: 'Bəzədilmiş Salon', ru: 'Украшенный салон', en: 'Decorated Interior' },
+    white_color: { az: 'Ağ Rəng', ru: 'Белый цвет', en: 'White Color' },
+    premium_brand: { az: 'Premium Marka', ru: 'Премиум марка', en: 'Premium Brand' },
+    rental: { az: 'Kirayə', ru: 'Аренда', en: 'Rental' },
+    purchase: { az: 'Alqı-satış', ru: 'Продажа', en: 'Purchase' },
+    designer_model: { az: 'Dizayner Model', ru: 'Дизайнерская модель', en: 'Designer Model' },
+    custom_fitting: { az: 'Ölçüyə Uyğunlaşdırma', ru: 'Подгонка по размеру', en: 'Custom Fitting' },
+    accessories_included: { az: 'Aksessuarlar Daxil', ru: 'Аксессуары включены', en: 'Accessories Included' },
+    bridal_bouquet: { az: 'Gəlin Buketi', ru: 'Букет невесты', en: 'Bridal Bouquet' },
+    venue_decoration: { az: 'Zal Bəzəyi', ru: 'Оформление зала', en: 'Venue Decoration' },
+    car_decoration: { az: 'Maşın Bəzəyi', ru: 'Оформление авто', en: 'Car Decoration' },
+    fresh_flowers: { az: 'Təzə Güllər', ru: 'Свежие цветы', en: 'Fresh Flowers' },
+    artificial_flowers: { az: 'Süni Güllər', ru: 'Искусственные цветы', en: 'Artificial Flowers' },
+    international: { az: 'Xarici Ölkə', ru: 'За границей', en: 'International' },
+    local_tours: { az: 'Yerli Turlar', ru: 'Местные туры', en: 'Local Tours' },
+    all_inclusive: { az: 'All Inclusive', ru: 'Всё включено', en: 'All Inclusive' },
+    beach_vacation: { az: 'Sahil İstirahəti', ru: 'Пляжный отдых', en: 'Beach Vacation' },
+    vip_package: { az: 'VIP Paket', ru: 'VIP пакет', en: 'VIP Package' },
+};
+
+const resolveTagLabel = (tag: string, lang: Language): string => {
+    const entry = TAG_ID_LABELS[tag];
+    return entry ? entry[lang] : tag; // Legacy tags (raw text) fall back to showing as-is
+};
+
 const TRANSLATIONS = {
     az: {
         welcomeSub: 'MƏRASİMİNİZİN NÖVÜNÜ SEÇİN',
@@ -58,6 +109,7 @@ const TRANSLATIONS = {
         daysLeftPre: 'Mərasimə', daysLeftPost: 'gün qalıb',
         catAll: 'Hamısı', catVenues: 'Zallar', catArtists: 'Artistlər',
         catMedia: 'Foto & Video', catCars: 'VIP Kortej',
+        catWeddingDress: 'Gəlinlik', catFlowers: 'Gül Dükanı', catTourism: 'Bal Ayı',
         catalog: 'KATALOQ', filters: 'Filtrlər', estPrice: 'Təxmini qiymət',
         details: 'Ətraflı bax →', addToCart: 'ƏLAVƏ ET', inCart: 'SMETADA',
         calcTitle: 'SMETA HESABLAMASI', guestsCount: 'qonaq',
@@ -128,6 +180,7 @@ const TRANSLATIONS = {
         daysLeftPre: 'До события осталось', daysLeftPost: 'дней',
         catAll: 'Все', catVenues: 'Залы', catArtists: 'Артисты',
         catMedia: 'Фото и Видео', catCars: 'VIP Кортеж',
+        catWeddingDress: 'Свадебное платье', catFlowers: 'Цветочный магазин', catTourism: 'Медовый месяц',
         catalog: 'КАТАЛОГ', filters: 'Фильтры', estPrice: 'Ориентировочная цена',
         details: 'Подробнее →', addToCart: 'ДОБАВИТЬ', inCart: 'В СМЕТЕ',
         calcTitle: 'РАСЧЕТ СМЕТЫ', guestsCount: 'гостей',
@@ -198,6 +251,7 @@ const TRANSLATIONS = {
         daysLeftPre: '', daysLeftPost: 'days left until event',
         catAll: 'All', catVenues: 'Venues', catArtists: 'Artists',
         catMedia: 'Photo & Video', catCars: 'VIP Cortege',
+        catWeddingDress: 'Wedding Dress', catFlowers: 'Flower Shop', catTourism: 'Honeymoon',
         catalog: 'CATALOG', filters: 'Filters', estPrice: 'Estimated price',
         details: 'Details →', addToCart: 'ADD TO ESTIMATE', inCart: 'ADDED',
         calcTitle: 'ESTIMATE CALCULATION', guestsCount: 'guests',
@@ -300,7 +354,10 @@ const CATEGORY_TAGS: Record<string, { az: string; ru: string; en: string }[]> = 
     ],
 };
 
-const formatCurrency = (val: number): string => val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const formatCurrency = (val: number | null | undefined): string => {
+    const safeVal = typeof val === 'number' && !isNaN(val) ? val : 0;
+    return safeVal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+};
 
 const calculateDaysLeft = (targetDateStr: string): number => {
     try {
@@ -399,7 +456,7 @@ export default function LuxuryApp() {
     setTimeout(() => reject(new Error('timeout')), 8000)
 );
 const { data, error } = await Promise.race([
-    supabase.from('service').select('*'),
+    supabase.from('service').select('*').eq('status', 'approved'),
     timeoutPromise
 ]) as any;
             if (data && !error) {
@@ -598,7 +655,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                     </View>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
-                        {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }].map(f => (
+                        {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }, { id: 'wedding_dress', name: t.catWeddingDress }, { id: 'flowers', name: t.catFlowers }, { id: 'tourism', name: t.catTourism }].map(f => (
                             <TouchableOpacity key={f.id} style={[styles.chip, selectedCat === f.id && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setSelectedCat(f.id as CategoryFilter); }}>
                                 <Text style={[styles.chipText, selectedCat === f.id && styles.activeChipText]}>{f.name}</Text>
                             </TouchableOpacity>
@@ -625,7 +682,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                                 onPress={() => {
                                     setLoadingServices(true);
                                     setLoadError(false);
-                                    supabase.from('service').select('*').then(({ data, error }) => {
+                                    supabase.from('service').select('*').eq('status', 'approved').then(({ data, error }) => {
                                         if (data && !error) {
                                             setServices(data as ServiceItem[]);
                                             setLoadError(false);
@@ -655,7 +712,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                                 <View style={styles.cardBody}>
                                     <Text style={styles.cardTitle}>{item.title}</Text>
                                     <View style={styles.tagRow}>
-                                        {item.tags?.map((tTag, idx) => <View key={idx} style={styles.tagBadge}><Text style={styles.tagText}>{tTag}</Text></View>)}
+                                        {item.tags?.map((tTag, idx) => <View key={idx} style={styles.tagBadge}><Text style={styles.tagText}>{resolveTagLabel(tTag, lang)}</Text></View>)}
                                     </View>
                                     <View style={styles.cardFooter}>
                                         <View>

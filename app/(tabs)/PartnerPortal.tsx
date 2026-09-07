@@ -12,42 +12,63 @@ import { supabase } from '../supabase';
 import type { CategoryFilter, EventType, Language } from './index';
 
 // ---------- Category tags (kept in sync with index.tsx) ----------
-const CATEGORY_TAGS: Record<string, { az: string; ru: string; en: string }[]> = {
+const CATEGORY_TAGS: Record<string, { id: string; az: string; ru: string; en: string }[]> = {
     venues: [
-        { az: 'VIP Səviyyə', ru: 'VIP уровень', en: 'VIP Level' },
-        { az: 'Dövlət Sarayı', ru: 'Дворец', en: 'Palace' },
-        { az: 'Panoram', ru: 'Панорама', en: 'Panoramic View' },
-        { az: 'Açıq Hava', ru: 'На улице', en: 'Outdoor' },
-        { az: 'Premium Zal', ru: 'Премиум зал', en: 'Premium Hall' },
-        { az: 'Yay Terrası', ru: 'Летняя терраса', en: 'Summer Terrace' },
-        { az: 'Milli Üslub', ru: 'Нац. стиль', en: 'National Style' },
-        { az: 'Restoran & Əyləncə', ru: 'Ресторан и развлечения', en: 'Restaurant & Fun' },
+        { id: 'vip_level', az: 'VIP Səviyyə', ru: 'VIP уровень', en: 'VIP Level' },
+        { id: 'palace', az: 'Dövlət Sarayı', ru: 'Дворец', en: 'Palace' },
+        { id: 'panoramic', az: 'Panoram', ru: 'Панорама', en: 'Panoramic View' },
+        { id: 'outdoor', az: 'Açıq Hava', ru: 'На улице', en: 'Outdoor' },
+        { id: 'premium_hall', az: 'Premium Zal', ru: 'Премиум зал', en: 'Premium Hall' },
+        { id: 'summer_terrace', az: 'Yay Terrası', ru: 'Летняя терраса', en: 'Summer Terrace' },
+        { id: 'national_style', az: 'Milli Üslub', ru: 'Нац. стиль', en: 'National Style' },
+        { id: 'restaurant_fun', az: 'Restoran & Əyləncə', ru: 'Ресторан и развлечения', en: 'Restaurant & Fun' },
     ],
     artists: [
-        { az: 'Pop Ulduzu', ru: 'Поп-звезда', en: 'Pop Star' },
-        { az: 'Canlı Səs', ru: 'Живой вокал', en: 'Live Vocal' },
-        { az: 'Solo Müğənni', ru: 'Солист', en: 'Solo Singer' },
-        { az: 'Xalq Artisti', ru: 'Народный артист', en: 'People\'s Artist' },
-        { az: 'DJ', ru: 'DJ', en: 'DJ' },
-        { az: 'Toastmaster', ru: 'Тамада', en: 'Toastmaster' },
-        { az: 'Canlı Orkestr', ru: 'Живой оркестр', en: 'Live Orchestra' },
-        { az: 'Milli Ansambl', ru: 'Нац. ансамбль', en: 'National Ensemble' },
-        { az: 'Tam Proqram', ru: 'Полная программа', en: 'Full Program' },
+        { id: 'pop_star', az: 'Pop Ulduzu', ru: 'Поп-звезда', en: 'Pop Star' },
+        { id: 'live_vocal', az: 'Canlı Səs', ru: 'Живой вокал', en: 'Live Vocal' },
+        { id: 'solo_singer', az: 'Solo Müğənni', ru: 'Солист', en: 'Solo Singer' },
+        { id: 'peoples_artist', az: 'Xalq Artisti', ru: 'Народный артист', en: 'People\'s Artist' },
+        { id: 'dj', az: 'DJ', ru: 'DJ', en: 'DJ' },
+        { id: 'toastmaster', az: 'Toastmaster', ru: 'Тамада', en: 'Toastmaster' },
+        { id: 'live_orchestra', az: 'Canlı Orkestr', ru: 'Живой оркестр', en: 'Live Orchestra' },
+        { id: 'national_ensemble', az: 'Milli Ansambl', ru: 'Нац. ансамбль', en: 'National Ensemble' },
+        { id: 'full_program', az: 'Tam Proqram', ru: 'Полная программа', en: 'Full Program' },
     ],
     media: [
-        { az: 'Peşəkar Fotoqraf', ru: 'Профессиональный фотограф', en: 'Professional Photographer' },
-        { az: '4K Kino', ru: '4K видео', en: '4K Video' },
-        { az: 'Aerofoto', ru: 'Аэросъёмка', en: 'Drone Footage' },
-        { az: 'Studiya Çəkilişi', ru: 'Студийная съёмка', en: 'Studio Shoot' },
-        { az: 'Foto Albom', ru: 'Фотоальбом', en: 'Photo Album' },
-        { az: 'Toy Çəkilişi', ru: 'Свадебная съёмка', en: 'Wedding Shoot' },
+        { id: 'pro_photographer', az: 'Peşəkar Fotoqraf', ru: 'Профессиональный фотограф', en: 'Professional Photographer' },
+        { id: '4k_video', az: '4K Kino', ru: '4K видео', en: '4K Video' },
+        { id: 'drone_footage', az: 'Aerofoto', ru: 'Аэросъёмка', en: 'Drone Footage' },
+        { id: 'studio_shoot', az: 'Studiya Çəkilişi', ru: 'Студийная съёмка', en: 'Studio Shoot' },
+        { id: 'photo_album', az: 'Foto Albom', ru: 'Фотоальбом', en: 'Photo Album' },
+        { id: 'wedding_shoot', az: 'Toy Çəkilişi', ru: 'Свадебная съёмка', en: 'Wedding Shoot' },
     ],
     cars: [
-        { az: 'Rolls-Royce', ru: 'Rolls-Royce', en: 'Rolls-Royce' },
-        { az: 'Şofer Daxil', ru: 'С водителем', en: 'With Driver' },
-        { az: 'Bəzədilmiş Salon', ru: 'Украшенный салон', en: 'Decorated Interior' },
-        { az: 'Ağ Rəng', ru: 'Белый цвет', en: 'White Color' },
-        { az: 'Premium Marka', ru: 'Премиум марка', en: 'Premium Brand' },
+        { id: 'rolls_royce', az: 'Rolls-Royce', ru: 'Rolls-Royce', en: 'Rolls-Royce' },
+        { id: 'with_driver', az: 'Şofer Daxil', ru: 'С водителем', en: 'With Driver' },
+        { id: 'decorated_interior', az: 'Bəzədilmiş Salon', ru: 'Украшенный салон', en: 'Decorated Interior' },
+        { id: 'white_color', az: 'Ağ Rəng', ru: 'Белый цвет', en: 'White Color' },
+        { id: 'premium_brand', az: 'Premium Marka', ru: 'Премиум марка', en: 'Premium Brand' },
+    ],
+    wedding_dress: [
+        { id: 'rental', az: 'Kirayə', ru: 'Аренда', en: 'Rental' },
+        { id: 'purchase', az: 'Alqı-satış', ru: 'Продажа', en: 'Purchase' },
+        { id: 'designer_model', az: 'Dizayner Model', ru: 'Дизайнерская модель', en: 'Designer Model' },
+        { id: 'custom_fitting', az: 'Ölçüyə Uyğunlaşdırma', ru: 'Подгонка по размеру', en: 'Custom Fitting' },
+        { id: 'accessories_included', az: 'Aksessuarlar Daxil', ru: 'Аксессуары включены', en: 'Accessories Included' },
+    ],
+    flowers: [
+        { id: 'bridal_bouquet', az: 'Gəlin Buketi', ru: 'Букет невесты', en: 'Bridal Bouquet' },
+        { id: 'venue_decoration', az: 'Zal Bəzəyi', ru: 'Оформление зала', en: 'Venue Decoration' },
+        { id: 'car_decoration', az: 'Maşın Bəzəyi', ru: 'Оформление авто', en: 'Car Decoration' },
+        { id: 'fresh_flowers', az: 'Təzə Güllər', ru: 'Свежие цветы', en: 'Fresh Flowers' },
+        { id: 'artificial_flowers', az: 'Süni Güllər', ru: 'Искусственные цветы', en: 'Artificial Flowers' },
+    ],
+    tourism: [
+        { id: 'international', az: 'Xarici Ölkə', ru: 'За границей', en: 'International' },
+        { id: 'local_tours', az: 'Yerli Turlar', ru: 'Местные туры', en: 'Local Tours' },
+        { id: 'all_inclusive', az: 'All Inclusive', ru: 'Всё включено', en: 'All Inclusive' },
+        { id: 'beach_vacation', az: 'Sahil İstirahəti', ru: 'Пляжный отдых', en: 'Beach Vacation' },
+        { id: 'vip_package', az: 'VIP Paket', ru: 'VIP пакет', en: 'VIP Package' },
     ],
 };
 
@@ -85,6 +106,7 @@ const PORTAL_TEXT = {
         partnerImagePick: '📷 Şəkil seç', partnerImageNeedTitle: 'Şəkil əlavə etməzdən əvvəl xidmətin adını yazın',
         partnerTags: 'Xüsusiyyətlər', partnerEventTypes: 'Hansı tədbirlərə uyğundur', partnerSubmit: 'GÖNDƏR',
         partnerSubmitting: 'GÖNDƏRİLİR...', catVenuesShort: 'Zal', catArtistsShort: 'Artist', catMediaShort: 'Foto/Video', catCarsShort: 'Kortej',
+        catWeddingDressShort: 'Gəlinlik', catFlowersShort: 'Gül', catTourismShort: 'Bal Ayı',
         wedding: 'Toy', khyna: 'Xına', birthday: 'Ad günü', savedNeedsReview: 'Dəyişiklikləriniz saxlanıldı, yenidən yoxlanışa göndərildi.',
     },
     ru: {
@@ -120,6 +142,7 @@ const PORTAL_TEXT = {
         partnerImagePick: '📷 Выбрать фото', partnerImageNeedTitle: 'Сначала укажите название услуги',
         partnerTags: 'Особенности', partnerEventTypes: 'Подходит для мероприятий', partnerSubmit: 'ОТПРАВИТЬ',
         partnerSubmitting: 'ОТПРАВКА...', catVenuesShort: 'Зал', catArtistsShort: 'Артист', catMediaShort: 'Фото/Видео', catCarsShort: 'Кортеж',
+        catWeddingDressShort: 'Платье', catFlowersShort: 'Цветы', catTourismShort: 'Медовый месяц',
         wedding: 'Свадьба', khyna: 'Хна', birthday: 'День рождения', savedNeedsReview: 'Изменения сохранены и отправлены на повторную проверку.',
     },
     en: {
@@ -155,6 +178,7 @@ const PORTAL_TEXT = {
         partnerImagePick: '📷 Pick a photo', partnerImageNeedTitle: 'Please enter the service name first',
         partnerTags: 'Features', partnerEventTypes: 'Suitable for events', partnerSubmit: 'SUBMIT',
         partnerSubmitting: 'SUBMITTING...', catVenuesShort: 'Venue', catArtistsShort: 'Artist', catMediaShort: 'Photo/Video', catCarsShort: 'Cortege',
+        catWeddingDressShort: 'Dress', catFlowersShort: 'Flowers', catTourismShort: 'Honeymoon',
         wedding: 'Wedding', khyna: 'Khyna', birthday: 'Birthday', savedNeedsReview: 'Your changes were saved and sent for re-review.',
     },
 };
@@ -541,8 +565,44 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
                         <Text style={styles.checkoutBtnText}>{mode === 'login' ? t.loginBtn : t.signupBtn}</Text>
                     )}
                 </TouchableOpacity>
+
+                <AdBanner />
             </ScrollView>
         </KeyboardAvoidingView>
+    );
+}
+
+function AdBanner() {
+    const [banner, setBanner] = useState<{ id: string; image_url: string; link_url: string | null } | null>(null);
+
+    useEffect(() => {
+        let mounted = true;
+        supabase
+            .from('banners')
+            .select('id, image_url, link_url')
+            .eq('active', true)
+            .order('sort_order', { ascending: true })
+            .limit(1)
+            .then(({ data }) => {
+                if (mounted && data && data.length > 0) setBanner(data[0]);
+            });
+        return () => { mounted = false; };
+    }, []);
+
+    if (!banner) return null;
+
+    const content = (
+        <Image source={{ uri: banner.image_url }} style={styles.adBannerImage} resizeMode="cover" />
+    );
+
+    return (
+        <View style={styles.adBannerWrap}>
+            {banner.link_url ? (
+                <TouchableOpacity activeOpacity={0.85} onPress={() => Linking.openURL(banner.link_url!)}>
+                    {content}
+                </TouchableOpacity>
+            ) : content}
+        </View>
     );
 }
 
@@ -564,7 +624,22 @@ function ServiceForm({
     const [description, setDescription] = useState(initial?.description || '');
     const [capacity, setCapacity] = useState(initial?.capacity || '');
     const [images, setImages] = useState<string[]>(initial?.images || []);
-    const [tags, setTags] = useState<string[]>(initial?.tags || []);
+    const legacyTagToId = (tagText: string): string | null => {
+        for (const catTags of Object.values(CATEGORY_TAGS)) {
+            const match = catTags.find(t => t.az === tagText || t.ru === tagText || t.en === tagText);
+            if (match) return match.id;
+        }
+        return null;
+    };
+
+    const normalizeInitialTags = (rawTags: string[] | undefined): string[] => {
+        if (!rawTags) return [];
+        return rawTags
+            .map(t => legacyTagToId(t) || t) // convert legacy text tags to id; keep unknown as-is
+            .filter((t, idx, arr) => arr.indexOf(t) === idx); // de-duplicate
+    };
+
+    const [tags, setTags] = useState<string[]>(normalizeInitialTags(initial?.tags));
     const [eventTypes, setEventTypes] = useState<EventType[]>(initial?.event_type?.length ? initial.event_type : ['wedding']);
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -699,6 +774,9 @@ function ServiceForm({
                     { id: 'artists', label: t.catArtistsShort },
                     { id: 'media', label: t.catMediaShort },
                     { id: 'cars', label: t.catCarsShort },
+                    { id: 'wedding_dress', label: t.catWeddingDressShort },
+                    { id: 'flowers', label: t.catFlowersShort },
+                    { id: 'tourism', label: t.catTourismShort },
                 ] as { id: CategoryFilter; label: string }[]).map(c => (
                     <TouchableOpacity key={c.id} style={[styles.partnerCatChip, category === c.id && styles.partnerCatChipActive]} onPress={() => changeCategory(c.id)}>
                         <Text style={[styles.partnerCatChipText, category === c.id && styles.partnerCatChipTextActive]}>{c.label}</Text>
@@ -710,11 +788,11 @@ function ServiceForm({
                 <>
                     <Text style={styles.partnerLabel}>{t.partnerTags}</Text>
                     <View style={styles.partnerCatRow}>
-                        {CATEGORY_TAGS[category].map((tagObj, idx) => {
+                        {CATEGORY_TAGS[category].map((tagObj) => {
                             const tagLabel = (tagObj as any)[lang];
-                            const selected = tags.includes(tagLabel);
+                            const selected = tags.includes(tagObj.id);
                             return (
-                                <TouchableOpacity key={idx} style={[styles.partnerTagChip, selected && styles.partnerTagChipActive]} onPress={() => toggleTag(tagLabel)}>
+                                <TouchableOpacity key={tagObj.id} style={[styles.partnerTagChip, selected && styles.partnerTagChipActive]} onPress={() => toggleTag(tagObj.id)}>
                                     <Text style={[styles.partnerTagChipText, selected && styles.partnerTagChipTextActive]}>{selected ? '✓ ' : ''}{tagLabel}</Text>
                                 </TouchableOpacity>
                             );
@@ -1109,6 +1187,8 @@ const styles = StyleSheet.create({
     authSwitchText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textAlign: 'center' },
     authSubtext: { fontSize: 13, color: '#6A625C', marginBottom: 16, lineHeight: 18 },
     authForgotText: { fontSize: 12, color: '#8A7E75', fontWeight: '600' },
+    adBannerWrap: { marginTop: 24, borderRadius: 14, overflow: 'hidden', backgroundColor: '#EFECE6' },
+    adBannerImage: { width: '100%', aspectRatio: 16 / 9 },
     partnerSuccessCheck: { fontSize: 40, color: '#D4AF37', fontWeight: '700', marginBottom: 10 },
     authModeSwitcher: { flexDirection: 'row', backgroundColor: '#EFECE6', borderRadius: 10, padding: 4, marginBottom: 10 },
     authModeTab: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
