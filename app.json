@@ -2,7 +2,7 @@
   "expo": {
     "name": "ToyOlsun",
     "slug": "ToyOlsun",
-    "version": "1.1.1",
+    "version": "1.1.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "toyolsun",
@@ -47,7 +47,16 @@
       "expo-font",
       "expo-image",
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@sentry/react-native",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "toy-olsun"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
