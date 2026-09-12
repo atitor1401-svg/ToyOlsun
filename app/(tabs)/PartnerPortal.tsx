@@ -4,6 +4,7 @@ import {
     ScrollView, Image, Modal, Platform, ActivityIndicator,
     KeyboardAvoidingView, Alert, Linking,
 } from 'react-native';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -701,9 +702,14 @@ function ServiceForm({
             const uploaded: string[] = [];
             for (const asset of result.assets) {
                 const fileExt = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
-                const fileName = `partners/${folderSlug}/${Date.now()}-${Math.floor(Math.random() * 100000)}.${fileExt}`;
-                const contentType = fileExt === 'png' ? 'image/png' : 'image/jpeg';
-                const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
+                const manipulated = await ImageManipulator.manipulateAsync(
+                    asset.uri,
+                    [{ resize: { width: 1000 } }],
+                    { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG }
+                );
+                const fileName = `partners/${folderSlug}/${Date.now()}-${Math.floor(Math.random() * 100000)}.jpg`;
+                const contentType = 'image/jpeg';
+                const base64 = await FileSystem.readAsStringAsync(manipulated.uri, { encoding: 'base64' });
                 const { error } = await supabase.storage.from('images').upload(fileName, decode(base64), { contentType, upsert: false });
                 if (error) throw error;
                 const { data } = supabase.storage.from('images').getPublicUrl(fileName);

@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     StyleSheet, Text, View, TextInput, TouchableOpacity,
-    ScrollView, StatusBar, Image, Modal, Platform, Linking,
+        ScrollView, StatusBar, Modal, Platform, Linking,
     SafeAreaView, PanResponder, Animated, KeyboardAvoidingView, AppState
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../supabase';
 import { useWindowDimensions, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { Calendar } from 'react-native-calendars';
 import PartnerPortal from './PartnerPortal';
 import CustomerPortal, { ServiceReviews } from './CustomerPortal';
@@ -381,9 +383,9 @@ function ImageWithLoader({ uri, width }: { uri: string; width: number }) {
                 <ActivityIndicator size="large" color="#D4AF37" style={{ position: 'absolute' }} />
             )}
             <Image
-                source={{ uri, cache: 'force-cache' }}
+                source={{ uri }}
                 style={{ width: '100%', height: '100%' }}
-                resizeMode="cover"
+                contentFit="cover"
                 onLoadEnd={() => setLoading(false)}
             />
         </View>
@@ -391,6 +393,7 @@ function ImageWithLoader({ uri, width }: { uri: string; width: number }) {
 }
 
 export default function LuxuryApp() {
+    const insets = useSafeAreaInsets();
     const [lang, setLang] = useState<Language>('az');
     const [services, setServices] = useState<ServiceItem[]>([]);
     const [loadingServices, setLoadingServices] = useState<boolean>(true);
@@ -654,8 +657,8 @@ const sendToTelegram = async (): Promise<boolean> => {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
-            <View style={styles.topHeader}>
-                <TouchableOpacity style={styles.changeEventBtn} onPress={() => setSelectedEventType(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <View style={[styles.topHeader, Platform.OS === 'android' && { paddingTop: insets.top + 10 }]}>
+                <TouchableOpacity style={[styles.changeEventBtn, Platform.OS === 'android' && { top: insets.top + 12 }]} onPress={() => setSelectedEventType(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                     <Text style={styles.changeEventText}>{t.change}</Text>
                 </TouchableOpacity>
                 <Text style={styles.brandBadge}>{getEventTitle()}</Text>
@@ -736,7 +739,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                         return (
                             <View key={item.id} style={styles.card}>
                                 <View style={styles.imageContainer}>
-                                    <Image source={{ uri: item.img }} style={styles.cardImg} resizeMode="cover" />
+                                    <Image source={{ uri: item.img }} style={styles.cardImg} contentFit="cover" />
                                     <View style={styles.ratingBadge}><Text style={styles.cardRating}>{item.rating} ★</Text></View>
                                 </View>
                                 <View style={styles.cardBody}>
@@ -871,7 +874,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                 </ScrollView>
             )}
 
-            <View style={styles.tabBar}>
+                        <View style={[styles.tabBar, Platform.OS === 'android' && { paddingBottom: insets.bottom + 10 }]}>
                 <TouchableOpacity style={[styles.tabItem, activeTab === 'catalog' && styles.tabItemActive]} onPress={() => setActiveTab('catalog')}>
                     <Text style={[styles.tabText, activeTab === 'catalog' && styles.tabTextActive]}>{t.tabCatalog}</Text>
                 </TouchableOpacity>
@@ -1009,7 +1012,7 @@ const styles = StyleSheet.create({
     eventTypeName: { fontSize: 16, fontWeight: '700', color: '#2C2623', marginBottom: 4 },
     eventTypeDesc: { fontSize: 12, color: '#8A7E75' },
     topHeader: { alignItems: 'center', paddingTop: 10, paddingBottom: 12, backgroundColor: '#FAF8F5', borderBottomWidth: 1, borderBottomColor: '#EFECE6', position: 'relative' },
-    changeEventBtn: { position: 'absolute', left: 16, top: 12 },
+    changeEventBtn: { position: 'absolute', left: 16, top: 12, minWidth: 80 },
     changeEventText: { fontSize: 14, color: '#8A7E75', fontWeight: '600' },
     partnerBtn: { position: 'absolute', right: 16, top: 12, backgroundColor: '#2C2623', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 14 },
     partnerBtnText: { fontSize: 12, color: '#D4AF37', fontWeight: '700' },
@@ -1058,9 +1061,9 @@ const styles = StyleSheet.create({
     countdownText: { color: '#EFECE6', fontSize: 12 },
     countdownDays: { color: '#D4AF37', fontWeight: '700', fontSize: 14 },
     filterBar: { flexDirection: 'row', marginBottom: 16 },
-    chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EFECE6', marginRight: 8 },
+    chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EFECE6', marginRight: 8, flexShrink: 0 },
     activeChip: { backgroundColor: '#2C2623', borderColor: '#2C2623' },
-    chipText: { fontSize: 13, color: '#6A625C', fontWeight: '500' },
+    chipText: { fontSize: 12, color: '#6A625C', fontWeight: '500' },
     activeChipText: { color: '#FFF' },
     segmentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     sectionHeading: { fontSize: 14, fontWeight: '700', letterSpacing: 1, color: '#2C2623' },
