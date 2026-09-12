@@ -9,6 +9,7 @@ import { supabase } from '../supabase';
 import { useWindowDimensions, ActivityIndicator } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import PartnerPortal from './PartnerPortal';
+import CustomerPortal, { ServiceReviews } from './CustomerPortal';
 
 interface Review {
   id: string;
@@ -416,7 +417,9 @@ export default function LuxuryApp() {
 
     // --- Partner portal ---
     const [showPartnerPortal, setShowPartnerPortal] = useState<boolean>(false);
+    const [showCustomerPortal, setShowCustomerPortal] = useState<boolean>(false);
     const [partnerLoggedIn, setPartnerLoggedIn] = useState<boolean>(false);
+    const [customerLoggedIn, setCustomerLoggedIn] = useState<boolean>(false);
 
     const translateY = React.useRef(new Animated.Value(0)).current;
     const panResponder = React.useRef(
@@ -440,10 +443,26 @@ export default function LuxuryApp() {
     const { width } = useWindowDimensions();
     const t = TRANSLATIONS[lang];
 
+        const checkUserRole = async (session: any) => {
+        if (!session) {
+            setPartnerLoggedIn(false);
+            setCustomerLoggedIn(false);
+            return;
+        }
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+        if (profile?.role === 'customer') {
+            setCustomerLoggedIn(true);
+            setPartnerLoggedIn(false);
+        } else {
+            setPartnerLoggedIn(true);
+            setCustomerLoggedIn(false);
+        }
+    };
+
     useEffect(() => {
-        supabase.auth.getSession().then(({ data }) => setPartnerLoggedIn(!!data.session));
+        supabase.auth.getSession().then(({ data }) => checkUserRole(data.session));
         const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-            setPartnerLoggedIn(!!newSession);
+            checkUserRole(newSession);
         });
         return () => { listener.subscription.unsubscribe(); };
     }, []);
@@ -493,6 +512,8 @@ const sendToTelegram = async (): Promise<boolean> => {
         if (submitting) return false;
         setSubmitting(true);
         let telegramOk = false;
+        const { data: userData } = await supabase.auth.getUser();
+        const currentUserId = userData?.user?.id || null;
         try {
             const { data, error } = await supabase.functions.invoke('submit-order', {
                 body: {
@@ -517,7 +538,7 @@ const sendToTelegram = async (): Promise<boolean> => {
         try {
             const orderRows = cart.map(item => {
                 const itemPrice = item.category === 'venues' ? item.price * parsedGuests : item.price;
-                return {
+                                return {
                     service_id: item.id,
                     service_owner_id: item.owner_id || null,
                     service_title: item.title,
@@ -528,6 +549,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                     item_price: itemPrice,
                     status: 'new',
                     lang,
+                    customer_id: currentUserId,
                 };
             });
             if (orderRows.length > 0) {
@@ -613,10 +635,18 @@ const sendToTelegram = async (): Promise<boolean> => {
                         </TouchableOpacity>
                     ))}
                 </View>
-                <TouchableOpacity style={partnerLoggedIn ? styles.myAccountBtnWelcome : styles.partnerLinkWelcome} onPress={() => setShowPartnerPortal(true)}>
-                    <Text style={partnerLoggedIn ? styles.myAccountBtnWelcomeText : styles.partnerLinkWelcomeText}>{partnerLoggedIn ? t.myAccountBtn : t.partnerBtn}</Text>
-                </TouchableOpacity>
+                                                {!customerLoggedIn && (
+                    <TouchableOpacity style={partnerLoggedIn ? styles.myAccountBtnWelcome : styles.partnerLinkWelcome} onPress={() => setShowPartnerPortal(true)}>
+                        <Text style={partnerLoggedIn ? styles.myAccountBtnWelcomeText : styles.partnerLinkWelcomeText}>{partnerLoggedIn ? t.myAccountBtn : t.partnerBtn}</Text>
+                    </TouchableOpacity>
+                )}
+                {!partnerLoggedIn && (
+                    <TouchableOpacity style={customerLoggedIn ? styles.myAccountBtnWelcome : styles.customerLinkWelcome} onPress={() => setShowCustomerPortal(true)}>
+                        <Text style={customerLoggedIn ? styles.myAccountBtnWelcomeText : styles.customerLinkWelcomeText}>{customerLoggedIn ? '👤 Şəxsi Kabinetim' : '👤 Müştəri kimi Qeydiyyat / Giriş'}</Text>
+                    </TouchableOpacity>
+                )}
                 <PartnerPortal lang={lang} visible={showPartnerPortal} onClose={() => setShowPartnerPortal(false)} />
+                <CustomerPortal lang={lang} visible={showCustomerPortal} onClose={() => setShowCustomerPortal(false)} />
             </SafeAreaView>
         );
     }
@@ -899,9 +929,10 @@ const sendToTelegram = async (): Promise<boolean> => {
                                 {selectedItem.address && <Text style={styles.detailInfo}>📍 {selectedItem.address}</Text>}
                                 {selectedItem.phone && <Text style={styles.detailInfo}>📞 {selectedItem.phone}</Text>}
                                 {selectedItem.capacity && <Text style={styles.detailInfo}>👥 {selectedItem.capacity}</Text>}
-                                <TouchableOpacity style={[styles.addBtn, { marginTop: 20, alignItems: 'center' }]} onPress={() => { toggleCart(selectedItem); setDetailModalVisible(false); }}>
+                                                                <TouchableOpacity style={[styles.addBtn, { marginTop: 20, alignItems: 'center' }]} onPress={() => { toggleCart(selectedItem); setDetailModalVisible(false); }}>
                                     <Text style={styles.addBtnText}>{cart.some(c => c.id === selectedItem.id) ? t.inCart : t.addToCart}</Text>
                                 </TouchableOpacity>
+                                <ServiceReviews serviceId={selectedItem.id} lang={lang} />
                                 <TouchableOpacity style={styles.closeBtn} onPress={() => setDetailModalVisible(false)}>
                                     <Text style={styles.closeBtnText}>{t.close}</Text>
                                 </TouchableOpacity>
@@ -984,8 +1015,10 @@ const styles = StyleSheet.create({
     partnerBtnText: { fontSize: 12, color: '#D4AF37', fontWeight: '700' },
     partnerLinkWelcome: { alignSelf: 'center', marginTop: 22, paddingVertical: 8, paddingHorizontal: 6 },
     partnerLinkWelcomeText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textDecorationLine: 'underline' },
-    myAccountBtnWelcome: { alignSelf: 'center', marginTop: 22, backgroundColor: '#2C2623', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20 },
+        myAccountBtnWelcome: { alignSelf: 'center', marginTop: 22, backgroundColor: '#2C2623', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20 },
     myAccountBtnWelcomeText: { fontSize: 13, color: '#D4AF37', fontWeight: '700' },
+    customerLinkWelcome: { alignSelf: 'center', marginTop: 12, paddingVertical: 8, paddingHorizontal: 6 },
+    customerLinkWelcomeText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textDecorationLine: 'underline' },
     partnerFormSub: { fontSize: 12, color: '#8A7E75', marginBottom: 18, lineHeight: 17 },
     partnerLabel: { fontSize: 11, fontWeight: '700', color: '#6A625C', textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
     partnerInput: { backgroundColor: '#FAF8F5', borderWidth: 1, borderColor: '#EFECE6', borderRadius: 8, padding: 12, fontSize: 14, color: '#2C2623' },

@@ -310,9 +310,22 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
                 setMode('confirm');
                 setLoading(false);
                 return;
-            } else {
+                        } else {
                 const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
                 if (error) throw error;
+
+                // Rol yoxlaması: müştəri hesabı, partnyor portalına girə bilməz
+                const { data: userData } = await supabase.auth.getUser();
+                const uid = userData?.user?.id;
+                if (uid) {
+                    const { data: profile } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+                    if (profile?.role === 'customer') {
+                        await supabase.auth.signOut();
+                        setErrorMsg('Bu hesab, müştəri kimi qeydiyyatdan keçib. Partnyor girişi üçün, ayrı hesab yaradın.');
+                        setLoading(false);
+                        return;
+                    }
+                }
             }
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             onAuthed();
@@ -332,12 +345,19 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
         }
         setLoading(true);
         try {
-            const { error } = await supabase.auth.verifyOtp({
+                        const { error } = await supabase.auth.verifyOtp({
                 email: email.trim(),
                 token: confirmCode.trim(),
                 type: 'signup',
             });
             if (error) throw error;
+
+            const { data: userData } = await supabase.auth.getUser();
+            const uid = userData?.user?.id;
+            if (uid) {
+                await supabase.from('profiles').upsert({ id: uid, role: 'partner' });
+            }
+
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             onAuthed();
         } catch (e: any) {
