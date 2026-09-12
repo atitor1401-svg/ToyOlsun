@@ -5,6 +5,7 @@ import {
     KeyboardAvoidingView, Alert, Linking,
 } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -900,6 +901,7 @@ function ServiceForm({
 }
 
 function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () => void; onClose: () => void }) {
+    const insets = useSafeAreaInsets();
     const t = PORTAL_TEXT[lang];
     const [activeTab, setActiveTab] = useState<'services' | 'orders'>('services');
     const [services, setServices] = useState<PartnerService[]>([]);
@@ -1014,7 +1016,7 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
 
     return (
         <View style={{ flex: 1 }}>
-            <View style={styles.dashHeader}>
+            <View style={[styles.dashHeader, Platform.OS === 'android' && { paddingTop: insets.top + 12 }]}>
                 <Text style={styles.dashTitle}>{activeTab === 'services' ? t.myServices : t.myOrders}</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TouchableOpacity style={styles.dashIconBtn} onPress={() => setShowAccountSettings(true)}>
@@ -1035,8 +1037,13 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.dashTab, activeTab === 'orders' && styles.dashTabActive]} onPress={() => setActiveTab('orders')}>
                     <Text style={[styles.dashTabText, activeTab === 'orders' && styles.dashTabTextActive]}>
-                        {t.myOrders}{orders.filter(o => o.status === 'new').length > 0 ? ` (${orders.filter(o => o.status === 'new').length})` : ''}
+                        {t.myOrders}
                     </Text>
+                    {orders.filter(o => o.status === 'new').length > 0 && (
+                        <View style={styles.badgeContainer}>
+                            <Text style={styles.badgeText}>{orders.filter(o => o.status === 'new').length}</Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -1122,7 +1129,7 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
             )}
 
             {activeTab === 'services' && (
-                <TouchableOpacity style={styles.fabAddBtn} onPress={() => setEditing('new')}>
+                <TouchableOpacity style={[styles.fabAddBtn, Platform.OS === 'android' && { bottom: insets.bottom + 20 }]} onPress={() => setEditing('new')}>
                     <Text style={styles.fabAddBtnText}>{t.addNew}</Text>
                 </TouchableOpacity>
             )}
@@ -1261,7 +1268,9 @@ const styles = StyleSheet.create({
     statusBadgeRejected: { backgroundColor: '#F5DCD9' },
     statusBadgeNew: { backgroundColor: '#D4AF37' },
     dashTabRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
-    dashTab: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#EFECE6', alignItems: 'center' },
+    dashTab: { flex: 1, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, backgroundColor: '#EFECE6', alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
+    badgeContainer: { backgroundColor: '#E53E3E', borderRadius: 10, minWidth: 18, height: 18, paddingHorizontal: 4, marginLeft: 4, justifyContent: 'center', alignItems: 'center' },
+    badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
     dashTabActive: { backgroundColor: '#2C2623' },
     dashTabText: { fontSize: 12, fontWeight: '700', color: '#6A625C' },
     dashTabTextActive: { color: '#D4AF37' },
