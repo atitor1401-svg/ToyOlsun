@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../lib/supabase';
+import { registerForPushNotificationsAsync, registerPushTokenForUser, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
 import type { CategoryFilter, EventType, Language } from './index';
 
 // ---------- Category tags (kept in sync with index.tsx) ----------
@@ -89,6 +90,7 @@ const PORTAL_TEXT = {
         noServices: 'Hələ heç bir xidmətiniz yoxdur', noServicesSub: 'Aşağıdakı düymə ilə ilk xidmətinizi əlavə edin',
         authError: 'Xəta baş verdi. Yenidən cəhd edin.', emailInvalid: 'Düzgün email daxil edin',
         passwordShort: 'Şifrə ən azı 6 simvol olmalıdır', accountSettings: 'Hesab Ayarları',
+        notifEnable: 'Bildirişləri aktivləşdir', notifGranted: 'Bildirişlər aktivdir ✅', notifDenied: 'İcazə verilmədi. Telefon ayarlarından aktivləşdirin.',
         forgotPasswordLink: 'Şifrəni unutmusunuz?', forgotPasswordTitle: 'Şifrəni Bərpa Et',
         privacyAgreePrefix: 'Şəxsi məlumatlarımın işlənməsinə razıyam.', privacyPolicyLink: 'Məxfilik Siyasəti',
         privacyRequired: 'Davam etmək üçün Məxfilik Siyasətini qəbul edin',
@@ -125,6 +127,7 @@ const PORTAL_TEXT = {
         noServices: 'У вас пока нет услуг', noServicesSub: 'Добавьте первую услугу с помощью кнопки ниже',
         authError: 'Произошла ошибка. Попробуйте снова.', emailInvalid: 'Введите корректный email',
         passwordShort: 'Пароль должен быть не менее 6 символов', accountSettings: 'Настройки аккаунта',
+        notifEnable: 'Включить уведомления', notifGranted: 'Уведомления включены ✅', notifDenied: 'Доступ не предоставлен. Включите в настройках телефона.',
         forgotPasswordLink: 'Забыли пароль?', forgotPasswordTitle: 'Восстановление пароля',
         privacyAgreePrefix: 'Я согласен(на) на обработку персональных данных.', privacyPolicyLink: 'Политика конфиденциальности',
         privacyRequired: 'Для продолжения примите Политику конфиденциальности',
@@ -161,6 +164,7 @@ const PORTAL_TEXT = {
         noServices: "You don't have any services yet", noServicesSub: 'Add your first service using the button below',
         authError: 'An error occurred. Please try again.', emailInvalid: 'Please enter a valid email',
         passwordShort: 'Password must be at least 6 characters', accountSettings: 'Account Settings',
+        notifEnable: 'Enable notifications', notifGranted: 'Notifications enabled ✅', notifDenied: 'Permission denied. Enable it in phone settings.',
         forgotPasswordLink: 'Forgot password?', forgotPasswordTitle: 'Reset Password',
         privacyAgreePrefix: 'I agree to the processing of my personal data.', privacyPolicyLink: 'Privacy Policy',
         privacyRequired: 'Please accept the Privacy Policy to continue',
@@ -912,6 +916,33 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
     const [deleteTarget, setDeleteTarget] = useState<PartnerService | null>(null);
     const [showAccountSettings, setShowAccountSettings] = useState(false);
     const [deletingAccount, setDeletingAccount] = useState(false);
+    const [notifStatus, setNotifStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
+
+    useEffect(() => {
+        getNotificationPermissionStatus().then(status => {
+            if (status === 'granted') setNotifStatus('granted');
+        });
+    }, []);
+
+    const handleEnableNotifications = async () => {
+        setNotifStatus('loading');
+        try {
+            const { granted, token } = await registerForPushNotificationsAsync();
+            if (!granted) { setNotifStatus('denied'); return; }
+            if (token) {
+                const { data: userData } = await supabase.auth.getUser();
+                const uid = userData?.user?.id;
+                if (uid) {
+                    await supabase.from('push_tokens').upsert({ user_id: uid, token, platform: Platform.OS }, { onConflict: 'token' });
+                }
+            }
+            await sendLocalTestNotification();
+            setNotifStatus('granted');
+        } catch (e) {
+            console.error('Enable notifications error:', e);
+            setNotifStatus('denied');
+        }
+    };
 
     const loadServices = useCallback(async () => {
         setLoading(true);
@@ -1157,6 +1188,20 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                 <View style={styles.modalOverlayCenter}>
                     <View style={styles.confirmBox}>
                         <Text style={styles.confirmTitle}>{t.accountSettings}</Text>
+
+                        <TouchableOpacity
+                            style={[styles.secondaryBtn, { alignItems: 'center' }, notifStatus === 'loading' && { opacity: 0.6 }]}
+                            disabled={notifStatus === 'loading' || notifStatus === 'granted'}
+                            onPress={handleEnableNotifications}
+                        >
+                            {notifStatus === 'loading' ? <ActivityIndicator color="#2C2623" /> : (
+                                <Text style={styles.secondaryBtnText}>
+                                    {notifStatus === 'granted' ? t.notifGranted : notifStatus === 'denied' ? t.notifDenied : t.notifEnable}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+
+                        <Text style={[styles.confirmTitle, { marginTop: 20 }]}>{t.deleteAccount}</Text>
                         <Text style={styles.confirmMsg}>{t.deleteAccountDesc}</Text>
                         <TouchableOpacity
                             style={[styles.dangerBtn, { marginTop: 16, alignItems: 'center' }, deletingAccount && { opacity: 0.6 }]}
@@ -1188,9 +1233,15 @@ export default function PartnerPortal({ lang, visible, onClose }: { lang: Langua
         supabase.auth.getSession().then(({ data }) => {
             setSession(data.session);
             setChecking(false);
+            if (data.session?.user?.id) {
+                registerPushTokenForUser(data.session.user.id);
+            }
         });
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
             setSession(newSession);
+            if (event === 'SIGNED_IN' && newSession?.user?.id) {
+                registerPushTokenForUser(newSession.user.id);
+            }
         });
         return () => { listener.subscription.unsubscribe(); };
     }, []);

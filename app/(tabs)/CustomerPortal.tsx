@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
+import { registerForPushNotificationsAsync, registerPushTokenForUser, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
 import type { Language } from './index';
 
 // ---------- Simple client-side profanity filter ----------
@@ -27,6 +28,7 @@ const CUSTOMER_TEXT = {
         fullName: 'Ad Soyad', fullNamePh: 'Adınızı və soyadınızı yazın',
         phone: 'Telefon', phonePh: '+994 XX XXX XX XX',
         myOrders: 'Müraciətlərim', logout: 'Çıxış', accountSettings: 'Hesab Ayarları',
+        notifEnable: 'Bildirişləri aktivləşdir', notifGranted: 'Bildirişlər aktivdir ✅', notifDenied: 'İcazə verilmədi. Telefon ayarlarından aktivləşdirin.',
         noOrders: 'Hələ heç bir müraciətiniz yoxdur',
         noOrdersSub: 'Kataloqdan bir xidmət seçib sifariş verdikdə, burada görünəcək',
         orderNew: 'Gözləyir', orderContacted: 'Əlaqə saxlanıldı', orderCancelled: 'Ləğv edildi',
@@ -60,6 +62,7 @@ const CUSTOMER_TEXT = {
         fullName: 'Имя Фамилия', fullNamePh: 'Введите имя и фамилию',
         phone: 'Телефон', phonePh: '+994 XX XXX XX XX',
         myOrders: 'Мои заявки', logout: 'Выйти', accountSettings: 'Настройки аккаунта',
+        notifEnable: 'Включить уведомления', notifGranted: 'Уведомления включены ✅', notifDenied: 'Доступ не предоставлен. Включите в настройках телефона.',
         noOrders: 'У вас пока нет заявок',
         noOrdersSub: 'Когда вы выберете услугу и оформите заказ, он появится здесь',
         orderNew: 'Ожидает', orderContacted: 'Связались', orderCancelled: 'Отменено',
@@ -93,6 +96,7 @@ const CUSTOMER_TEXT = {
         fullName: 'Full Name', fullNamePh: 'Enter your full name',
         phone: 'Phone', phonePh: '+994 XX XXX XX XX',
         myOrders: 'My Orders', logout: 'Log Out', accountSettings: 'Account Settings',
+        notifEnable: 'Enable notifications', notifGranted: 'Notifications enabled ✅', notifDenied: 'Permission denied. Enable it in phone settings.',
         noOrders: "You don't have any orders yet",
         noOrdersSub: 'Once you choose a service and place an order, it will appear here',
         orderNew: 'Pending', orderContacted: 'Contacted', orderCancelled: 'Cancelled',
@@ -396,6 +400,33 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
     const [showSettings, setShowSettings] = useState(false);
     const [cancelTarget, setCancelTarget] = useState<CustomerOrder | null>(null);
     const [deletingAccount, setDeletingAccount] = useState(false);
+    const [notifStatus, setNotifStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
+
+    useEffect(() => {
+        getNotificationPermissionStatus().then(status => {
+            if (status === 'granted') setNotifStatus('granted');
+        });
+    }, []);
+
+    const handleEnableNotifications = async () => {
+        setNotifStatus('loading');
+        try {
+            const { granted, token } = await registerForPushNotificationsAsync();
+            if (!granted) { setNotifStatus('denied'); return; }
+            if (token) {
+                const { data: userData } = await supabase.auth.getUser();
+                const uid = userData?.user?.id;
+                if (uid) {
+                    await supabase.from('push_tokens').upsert({ user_id: uid, token, platform: Platform.OS }, { onConflict: 'token' });
+                }
+            }
+            await sendLocalTestNotification();
+            setNotifStatus('granted');
+        } catch (e) {
+            console.error('Enable notifications error:', e);
+            setNotifStatus('denied');
+        }
+    };
 
     const loadOrders = useCallback(async () => {
         setLoading(true);
@@ -518,6 +549,20 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
                 <View style={styles.modalOverlay}>
                     <View style={styles.confirmBox}>
                         <Text style={styles.confirmTitle}>{t.accountSettings}</Text>
+
+                        <TouchableOpacity
+                            style={[styles.secondaryBtn, { alignItems: 'center' }, notifStatus === 'loading' && { opacity: 0.6 }]}
+                            disabled={notifStatus === 'loading' || notifStatus === 'granted'}
+                            onPress={handleEnableNotifications}
+                        >
+                            {notifStatus === 'loading' ? <ActivityIndicator color="#2C2623" /> : (
+                                <Text style={styles.secondaryBtnText}>
+                                    {notifStatus === 'granted' ? t.notifGranted : notifStatus === 'denied' ? t.notifDenied : t.notifEnable}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+
+                        <Text style={[styles.confirmTitle, { marginTop: 20 }]}>{t.deleteAccount}</Text>
                         <Text style={styles.confirmMsg}>{t.deleteAccountDesc}</Text>
                         <TouchableOpacity
                             style={[styles.dangerBtn, { marginTop: 16, alignItems: 'center' }, deletingAccount && { opacity: 0.6 }]}
@@ -721,9 +766,15 @@ export default function CustomerPortal({ lang, visible, onClose }: { lang: Langu
         supabase.auth.getSession().then(({ data }) => {
             setSession(data.session);
             setChecking(false);
+            if (data.session?.user?.id) {
+                registerPushTokenForUser(data.session.user.id);
+            }
         });
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
             setSession(newSession);
+            if (event === 'SIGNED_IN' && newSession?.user?.id) {
+                registerPushTokenForUser(newSession.user.id);
+            }
         });
         return () => { listener.subscription.unsubscribe(); };
     }, []);
