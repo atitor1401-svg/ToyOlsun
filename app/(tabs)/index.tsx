@@ -139,6 +139,7 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Müraciət Qəbul Edildi',
         modalSuccessDesc: 'AZN məbləğindəki smetanız fərdi menecerə göndərildi. Yarım saat ərzində sizinlə əlaqə saxlayacağıq.',
         partnerBtn: '+ Partnyor ol',
+        customerBtn: '+ Müştəri kimi Qeydiyyat / Giriş',
         myAccountBtn: '👤 Şəxsi Kabinetim',
         partnerFormTitle: 'Partnyor Qeydiyyatı',
         partnerFormSub: 'Xidmətinizi əlavə edin — yoxlanışdan sonra kataloqda görünəcək',
@@ -210,6 +211,7 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Заявка принята',
         modalSuccessDesc: 'AZN отправлена персональному менеджеру. Мы свяжемся с вами в течение 30 минут.',
         partnerBtn: '+ Стать партнером',
+        customerBtn: '+ Войти как клиент',
         myAccountBtn: '👤 Мой кабинет',
         partnerFormTitle: 'Регистрация партнера',
         partnerFormSub: 'Добавьте свою услугу — появится в каталоге после проверки',
@@ -281,6 +283,7 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Request Received',
         modalSuccessDesc: 'AZN has been sent to your personal manager. We will contact you within 30 minutes.',
         partnerBtn: '+ Become a partner',
+        customerBtn: '+ Sign in as Customer',
         myAccountBtn: '👤 My Account',
         partnerFormTitle: 'Partner Registration',
         partnerFormSub: 'Add your service — it will appear in the catalog after review',
@@ -645,7 +648,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                 )}
                 {!partnerLoggedIn && (
                     <TouchableOpacity style={customerLoggedIn ? styles.myAccountBtnWelcome : styles.customerLinkWelcome} onPress={() => setShowCustomerPortal(true)}>
-                        <Text style={customerLoggedIn ? styles.myAccountBtnWelcomeText : styles.customerLinkWelcomeText}>{customerLoggedIn ? '👤 Şəxsi Kabinetim' : '👤 Müştəri kimi Qeydiyyat / Giriş'}</Text>
+                        <Text style={customerLoggedIn ? styles.myAccountBtnWelcomeText : styles.customerLinkWelcomeText}>{customerLoggedIn ? t.myAccountBtn : t.customerBtn}</Text>
                     </TouchableOpacity>
                 )}
                 <PartnerPortal lang={lang} visible={showPartnerPortal} onClose={() => setShowPartnerPortal(false)} />
