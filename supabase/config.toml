@@ -9,3 +9,10 @@ entrypoint = "./functions/submit-order/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/submit-order/*.html" ]
+
+[functions.send-push]
+enabled = true
+# Auth is handled inside the function itself (service_role key check),
+# not Supabase's gateway JWT verification.
+verify_jwt = false
+entrypoint = "./functions/send-push/index.ts"
