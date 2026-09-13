@@ -2,12 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     StyleSheet, Text, View, TextInput, TouchableOpacity,
         ScrollView, StatusBar, Modal, Platform, Linking,
-    SafeAreaView, PanResponder, Animated, KeyboardAvoidingView, AppState
+    PanResponder, Animated, KeyboardAvoidingView, AppState
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '../supabase';
+import { supabase } from '../../lib/supabase';
 import { useWindowDimensions, ActivityIndicator } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Calendar } from 'react-native-calendars';
 import PartnerPortal from './PartnerPortal';
@@ -613,12 +613,12 @@ const sendToTelegram = async (): Promise<boolean> => {
                 <View style={styles.langSelectorContainer}>
                     {(['az', 'ru', 'en'] as Language[]).map(l => (
                         <TouchableOpacity key={l} style={[styles.langBtn, lang === l && styles.langBtnActive]} onPress={() => { Haptics.selectionAsync(); setLang(l); }}>
-                            <Text style={[styles.langBtnText, lang === l && styles.langBtnTextActive]}>{l.toUpperCase()}</Text>
+                            <Text style={[styles.langBtnText, lang === l && styles.langBtnTextActive]} allowFontScaling={false} maxFontSizeMultiplier={1}>{l.toUpperCase()}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
                 <View style={styles.welcomeHeader}>
-                    <Text style={styles.brandBadge}>CONCIERGE & ATELIER</Text>
+                    <Text style={styles.brandBadge} allowFontScaling={false} maxFontSizeMultiplier={1}>CONCIERGE & ATELIER</Text>
                     <Text style={styles.brandTitle}>TOY OLSUN</Text>
                     <View style={styles.headerDivider} />
                     <Text style={styles.welcomeSub}>{t.welcomeSub}</Text>
@@ -655,13 +655,13 @@ const sendToTelegram = async (): Promise<boolean> => {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={Platform.OS === 'android' ? ['left', 'right'] : ['top', 'right', 'bottom', 'left']}>
             <StatusBar barStyle="dark-content" />
             <View style={[styles.topHeader, Platform.OS === 'android' && { paddingTop: insets.top + 10 }]}>
                 <TouchableOpacity style={[styles.changeEventBtn, Platform.OS === 'android' && { top: insets.top + 12 }]} onPress={() => setSelectedEventType(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                     <Text style={styles.changeEventText}>{t.change}</Text>
                 </TouchableOpacity>
-                <Text style={styles.brandBadge}>{getEventTitle()}</Text>
+                <Text style={styles.brandBadge} allowFontScaling={false} maxFontSizeMultiplier={1}>{getEventTitle()}</Text>
                 <Text style={styles.brandTitle}>TOY OLSUN</Text>
                 <View style={styles.headerDivider} />
             </View>
@@ -690,7 +690,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
                         {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }, { id: 'wedding_dress', name: t.catWeddingDress }, { id: 'flowers', name: t.catFlowers }, { id: 'tourism', name: t.catTourism }].map(f => (
                             <TouchableOpacity key={f.id} style={[styles.chip, selectedCat === f.id && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setSelectedCat(f.id as CategoryFilter); }}>
-                                <Text style={[styles.chipText, selectedCat === f.id && styles.activeChipText]}>{f.name}</Text>
+                                <Text style={[styles.chipText, selectedCat === f.id && styles.activeChipText]} allowFontScaling={false} maxFontSizeMultiplier={1}>{f.name}</Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -876,13 +876,13 @@ const sendToTelegram = async (): Promise<boolean> => {
 
                         <View style={[styles.tabBar, Platform.OS === 'android' && { paddingBottom: insets.bottom + 10 }]}>
                 <TouchableOpacity style={[styles.tabItem, activeTab === 'catalog' && styles.tabItemActive]} onPress={() => setActiveTab('catalog')}>
-                    <Text style={[styles.tabText, activeTab === 'catalog' && styles.tabTextActive]}>{t.tabCatalog}</Text>
+                    <Text style={[styles.tabText, activeTab === 'catalog' && styles.tabTextActive]} allowFontScaling={false} maxFontSizeMultiplier={1}>{t.tabCatalog}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.tabItem, activeTab === 'cart' && styles.tabItemActive]} onPress={() => setActiveTab('cart')}>
-                    <Text style={[styles.tabText, activeTab === 'cart' && styles.tabTextActive]}>{t.tabCart} {cart.length > 0 ? `(${cart.length})` : ''}</Text>
+                    <Text style={[styles.tabText, activeTab === 'cart' && styles.tabTextActive]} allowFontScaling={false} maxFontSizeMultiplier={1}>{t.tabCart} {cart.length > 0 ? `(${cart.length})` : ''}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.tabItem, activeTab === 'concierge' && styles.tabItemActive]} onPress={() => setActiveTab('concierge')}>
-                    <Text style={[styles.tabText, activeTab === 'concierge' && styles.tabTextActive]}>{t.tabConcierge}</Text>
+                    <Text style={[styles.tabText, activeTab === 'concierge' && styles.tabTextActive]} allowFontScaling={false} maxFontSizeMultiplier={1}>{t.tabConcierge}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -997,12 +997,12 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FAF8F5' },
     welcomeContainer: { flex: 1, backgroundColor: '#FAF8F5', justifyContent: 'center', paddingHorizontal: 20 },
     langSelectorContainer: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20 },
-    langBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, backgroundColor: '#EFECE6' },
+    langBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, backgroundColor: '#EFECE6', minWidth: 50, alignItems: 'center', justifyContent: 'center' },
     langBtnActive: { backgroundColor: '#2C2623' },
-    langBtnText: { fontSize: 12, fontWeight: '600', color: '#6A625C' },
+    langBtnText: { fontSize: 12, fontWeight: '700', color: '#6A625C' },
     langBtnTextActive: { color: '#FFF' },
     welcomeHeader: { alignItems: 'center', marginBottom: 30 },
-    brandBadge: { fontSize: 11, color: '#8A7E75', fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
+    brandBadge: { fontSize: 11, color: '#8A7E75', fontWeight: '700', textTransform: 'uppercase', marginBottom: 4 },
     brandTitle: { fontSize: 26, fontFamily: FONTS.serif, fontWeight: '700', color: '#2C2623', letterSpacing: 1 },
     headerDivider: { width: 40, height: 2, backgroundColor: '#D4AF37', marginVertical: 10 },
     welcomeSub: { fontSize: 12, letterSpacing: 1.5, color: '#6A625C', fontWeight: '600' },
@@ -1122,7 +1122,7 @@ const styles = StyleSheet.create({
     tabBar: { flexDirection: 'row', backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EFECE6', paddingBottom: Platform.OS === 'ios' ? 20 : 10, paddingTop: 10 },
     tabItem: { flex: 1, alignItems: 'center', paddingVertical: 6 },
     tabItemActive: { borderTopWidth: 2, borderTopColor: '#2C2623', marginTop: -10, paddingTop: 14 },
-    tabText: { fontSize: 11, fontWeight: '600', color: '#A0968E' },
+    tabText: { fontSize: 11, fontWeight: '700', color: '#A0968E' },
     tabTextActive: { color: '#2C2623' },
     modalOverlayCenter: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
     datePickerModalContent: { width: '100%', maxWidth: 360, backgroundColor: '#FFF', borderRadius: 20, padding: 16, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },

@@ -10,7 +10,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
-import { supabase } from '../supabase';
+import { supabase } from '../../lib/supabase';
 import type { CategoryFilter, EventType, Language } from './index';
 
 // ---------- Category tags (kept in sync with index.tsx) ----------
@@ -1014,6 +1014,8 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
         );
     }
 
+    const newOrdersCount = orders.filter(o => o.status === 'new').length;
+
     return (
         <View style={{ flex: 1 }}>
             <View style={[styles.dashHeader, Platform.OS === 'android' && { paddingTop: insets.top + 12 }]}>
@@ -1039,9 +1041,9 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                     <Text style={[styles.dashTabText, activeTab === 'orders' && styles.dashTabTextActive]}>
                         {t.myOrders}
                     </Text>
-                    {orders.filter(o => o.status === 'new').length > 0 && (
+                    {newOrdersCount > 0 && (
                         <View style={styles.badgeContainer}>
-                            <Text style={styles.badgeText}>{orders.filter(o => o.status === 'new').length}</Text>
+                            <Text style={styles.badgeText}>{newOrdersCount}</Text>
                         </View>
                     )}
                 </TouchableOpacity>
@@ -1195,7 +1197,7 @@ export default function PartnerPortal({ lang, visible, onClose }: { lang: Langua
 
     return (
         <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-            <View style={{ flex: 1, backgroundColor: '#FAF8F5', paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
+            <View style={{ flex: 1, backgroundColor: '#FAF8F5', paddingTop: Platform.OS === 'ios' ? 50 : (session && !checking ? 0 : 20) }}>
                 {(!session || checking) && (
                     <TouchableOpacity onPress={onClose} style={styles.rootCloseBtn}>
                         <Text style={styles.rootCloseBtnText}>✕</Text>
