@@ -629,10 +629,13 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
             { text: t.deleteConfirmNo, style: 'cancel' },
             {
                 text: t.deleteConfirmYes, style: 'destructive', onPress: async () => {
-                    const { error } = await supabase.from('customer_reviews').delete().eq('id', reviewId);
+                    if (!userId) return;
+                    const { error } = await supabase.from('customer_reviews').delete().eq('id', reviewId).eq('customer_id', userId);
                     if (!error) {
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                         setReviews(prev => prev.filter(r => r.id !== reviewId));
+                    } else {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                     }
                 },
             },
@@ -642,11 +645,21 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
     const handleToggleLike = async (review: ReviewItem) => {
         if (!userId) return;
         if (review.liked_by_me) {
-            await supabase.from('review_likes').delete().eq('review_id', review.id).eq('customer_id', userId);
             setReviews(prev => prev.map(r => r.id === review.id ? { ...r, liked_by_me: false, like_count: r.like_count - 1 } : r));
+            const { error } = await supabase.from('review_likes').delete().eq('review_id', review.id).eq('customer_id', userId);
+            if (error) {
+                setReviews(prev => prev.map(r => r.id === review.id ? { ...r, liked_by_me: true, like_count: r.like_count + 1 } : r));
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                return;
+            }
         } else {
-            await supabase.from('review_likes').insert({ review_id: review.id, customer_id: userId });
             setReviews(prev => prev.map(r => r.id === review.id ? { ...r, liked_by_me: true, like_count: r.like_count + 1 } : r));
+            const { error } = await supabase.from('review_likes').insert({ review_id: review.id, customer_id: userId });
+            if (error) {
+                setReviews(prev => prev.map(r => r.id === review.id ? { ...r, liked_by_me: false, like_count: r.like_count - 1 } : r));
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                return;
+            }
         }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
