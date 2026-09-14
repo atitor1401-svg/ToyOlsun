@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
+import { registerPushTokenForUser } from '../../lib/notifications';
 import { useWindowDimensions, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -471,6 +472,14 @@ export default function LuxuryApp() {
             checkUserRole(newSession);
         });
         return () => { listener.subscription.unsubscribe(); };
+    }, []);
+
+    // Ask for notification permission right on app open, not just after
+    // login — anyone browsing the catalog (logged in or not) can opt in.
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data }) => {
+            registerPushTokenForUser(data.session?.user?.id ?? null);
+        });
     }, []);
 
     useEffect(() => {
