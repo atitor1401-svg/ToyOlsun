@@ -895,7 +895,7 @@ function ServiceForm({
                 <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, alignItems: 'center' }]} onPress={onCancel}>
                     <Text style={styles.secondaryBtnText}>{t.cancel}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.checkoutBtn, { flex: 1 }, saving && { opacity: 0.6 }]} disabled={saving} onPress={handleSave}>
+                <TouchableOpacity style={[styles.checkoutBtn, { flex: 1 }, (saving || uploading) && { opacity: 0.6 }]} disabled={saving || uploading} onPress={handleSave}>
                     {saving ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.checkoutBtnText}>{t.save}</Text>}
                 </TouchableOpacity>
             </View>
