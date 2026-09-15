@@ -13,6 +13,10 @@ import { Image } from 'expo-image';
 import { Calendar } from 'react-native-calendars';
 import PartnerPortal from './PartnerPortal';
 import CustomerPortal, { ServiceReviews } from './CustomerPortal';
+import { Feather } from '@expo/vector-icons';
+import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
+import { Colors as Brand } from '@/constants/brand';
 
 interface Review {
   id: string;
@@ -722,8 +726,10 @@ const sendToTelegram = async (): Promise<boolean> => {
                         <View style={styles.emptyBox}>
                             <Text style={styles.emptyTitle}>{t.errorTitle}</Text>
                             <Text style={styles.emptySub}>{t.errorDesc}</Text>
-                            <TouchableOpacity 
-                                style={[styles.checkoutBtn, { marginTop: 16, backgroundColor: '#2C2623' }]} 
+                            <Button
+                                label="Yenidən cəhd et"
+                                variant="primary"
+                                style={{ marginTop: 16 }}
                                 onPress={() => {
                                     setLoadingServices(true);
                                     setLoadError(false);
@@ -737,9 +743,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                                         setLoadingServices(false);
                                     });
                                 }}
-                            >
-                                <Text style={[styles.checkoutBtnText, { color: '#FFF' }]}>Yenidən cəhd et</Text>
-                            </TouchableOpacity>
+                            />
                         </View>
                     ) : filteredServices.length === 0 ? (
                         <View style={styles.emptyBox}>
@@ -752,7 +756,10 @@ const sendToTelegram = async (): Promise<boolean> => {
                             <View key={item.id} style={styles.card}>
                                 <View style={styles.imageContainer}>
                                     <Image source={{ uri: item.img }} style={styles.cardImg} contentFit="cover" />
-                                    <View style={styles.ratingBadge}><Text style={styles.cardRating}>{item.rating} ★</Text></View>
+                                    <View style={styles.ratingBadge}>
+                                        <Feather name="star" size={11} color={Brand.gold} />
+                                        <Text style={styles.cardRating}>{item.rating}</Text>
+                                    </View>
                                 </View>
                                 <View style={styles.cardBody}>
                                     <Text style={styles.cardTitle}>{item.title}</Text>
@@ -768,9 +775,12 @@ const sendToTelegram = async (): Promise<boolean> => {
                                             <TouchableOpacity style={styles.detailBtn} onPress={() => openDetail(item)}>
                                                 <Text style={styles.detailBtnText}>{t.details}</Text>
                                             </TouchableOpacity>
-                                            <TouchableOpacity style={[styles.addBtn, inCart && styles.addedBtn]} activeOpacity={0.7} onPress={() => toggleCart(item)}>
-                                                <Text style={[styles.addBtnText, inCart && styles.addedBtnText]}>{inCart ? t.inCart : t.addToCart}</Text>
-                                            </TouchableOpacity>
+                                            <Button
+                                                label={inCart ? t.inCart : t.addToCart}
+                                                variant={inCart ? 'secondary' : 'primary'}
+                                                size="sm"
+                                                onPress={() => toggleCart(item)}
+                                            />
                                         </View>
                                     </View>
                                 </View>
@@ -800,9 +810,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                                             <Text style={styles.cartItemSub}>{item.category === 'venues' ? `${item.price} AZN × ${parsedGuests} ${t.guestUnit}` : item.unit}</Text>
                                         </View>
                                         <Text style={styles.cartItemPrice}>{formatCurrency(itemTotal)} AZN</Text>
-                                        <TouchableOpacity onPress={() => toggleCart(item)} style={styles.removeBtn}>
-                                            <Text style={{ color: '#8A7E75', fontSize: 16 }}>✕</Text>
-                                        </TouchableOpacity>
+                                        <IconButton icon="x" size={28} onPress={() => toggleCart(item)} style={styles.removeBtn} />
                                     </View>
                                 );
                             })}
@@ -838,10 +846,12 @@ const sendToTelegram = async (): Promise<boolean> => {
                             <View style={styles.totalCard}>
                                 <Text style={styles.totalTitle}>{t.totalEstimate}</Text>
                                 <Text style={styles.totalAmount}>{formatCurrency(totalEstimate)} AZN</Text>
-                                <TouchableOpacity 
-                                    style={[styles.checkoutBtn, submitting && { opacity: 0.6 }]} 
-                                    activeOpacity={0.8} 
-                                    disabled={submitting}
+                                <Button
+                                    label={t.sendManager}
+                                    variant="gold"
+                                    fullWidth
+                                    loading={submitting}
+                                    style={{ marginTop: 6 }}
                                     onPress={async () => {
                                         if (!fullName.trim() || phone.trim() === '+994' || !privacyAccepted) {
                                             return;
@@ -852,9 +862,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                                             setCheckoutModalVisible(true);
                                         }
                                     }}
-                                >
-                                    <Text style={styles.checkoutBtnText}>{submitting ? t.loadingText : t.sendManager}</Text>
-                                </TouchableOpacity>
+                                />
                             </View>
                         </>
                     )}
@@ -867,12 +875,21 @@ const sendToTelegram = async (): Promise<boolean> => {
                         <Text style={styles.conciergeBadge}>{t.conciergeBadge}</Text>
                         <Text style={styles.conciergeTitle}>{t.conciergeTitle}</Text>
                         <Text style={styles.conciergeDesc}>{t.conciergeDesc}</Text>
-                        <TouchableOpacity style={styles.whatsappBtn} activeOpacity={0.8} onPress={() => Linking.openURL('https://wa.me/994502503171')}>
-                            <Text style={styles.whatsappBtnText}>{t.writeWhatsapp}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.callBtn} activeOpacity={0.8} onPress={() => Linking.openURL('tel:+994502503171')}>
-                            <Text style={styles.callBtnText}>{t.callProducer}</Text>
-                        </TouchableOpacity>
+                        <Button
+                            label={t.writeWhatsapp}
+                            variant="primary"
+                            fullWidth
+                            icon="message-circle"
+                            style={[styles.whatsappBtn, { marginBottom: 10 }]}
+                            onPress={() => Linking.openURL('https://wa.me/994502503171')}
+                        />
+                        <Button
+                            label={t.callProducer}
+                            variant="primary"
+                            fullWidth
+                            icon="phone"
+                            onPress={() => Linking.openURL('tel:+994502503171')}
+                        />
                     </View>
                     <View style={styles.conciergeServicesList}>
                         <Text style={styles.sectionHeading}>{t.includedTitle}</Text>
@@ -908,13 +925,9 @@ const sendToTelegram = async (): Promise<boolean> => {
                             markedDates={{ [selectedDate]: { selected: true, selectedColor: '#2C2623' } }}
                             theme={{ selectedDayBackgroundColor: '#2C2623', todayTextColor: '#2C2623', arrowColor: '#2C2623' }}
                         />
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
-                            <TouchableOpacity onPress={() => setShowDatePickerModal(false)} style={styles.secondaryBtn}>
-                                <Text style={styles.secondaryBtnText}>{t.close}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => { setEventDate(selectedDate); setShowDatePickerModal(false); }} style={styles.primaryBtn}>
-                                <Text style={styles.primaryBtnText}>{t.save}</Text>
-                            </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, gap: 10 }}>
+                            <Button label={t.close} variant="secondary" onPress={() => setShowDatePickerModal(false)} style={{ flex: 1 }} />
+                            <Button label={t.save} variant="primary" onPress={() => { setEventDate(selectedDate); setShowDatePickerModal(false); }} style={{ flex: 1 }} />
                         </View>
                     </TouchableOpacity>
                 </TouchableOpacity>
@@ -924,9 +937,7 @@ const sendToTelegram = async (): Promise<boolean> => {
             <Modal visible={detailModalVisible} transparent animationType="slide" onRequestClose={() => setDetailModalVisible(false)}>
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlayBottom}>
                     <Animated.View style={[styles.modalContentBottom, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
-                        <TouchableOpacity onPress={() => setDetailModalVisible(false)} style={styles.closeXBtn}>
-                            <Text style={styles.closeXBtnText}>✕</Text>
-                        </TouchableOpacity>
+                        <IconButton icon="x" onPress={() => setDetailModalVisible(false)} style={styles.closeXBtn} />
                         {selectedItem && (
                             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                                 {selectedItem.images && selectedItem.images.length > 0 ? (
@@ -941,16 +952,33 @@ const sendToTelegram = async (): Promise<boolean> => {
                                 <Text style={styles.detailTitle}>{selectedItem.title}</Text>
                                 <Text style={styles.detailPrice}>{formatCurrency(selectedItem.price)} {selectedItem.unit}</Text>
                                 {selectedItem.description && <Text style={styles.detailDesc}>{selectedItem.description}</Text>}
-                                {selectedItem.address && <Text style={styles.detailInfo}>📍 {selectedItem.address}</Text>}
-                                {selectedItem.phone && <Text style={styles.detailInfo}>📞 {selectedItem.phone}</Text>}
-                                {selectedItem.capacity && <Text style={styles.detailInfo}>👥 {selectedItem.capacity}</Text>}
-                                                                <TouchableOpacity style={[styles.addBtn, { marginTop: 20, alignItems: 'center' }]} onPress={() => { toggleCart(selectedItem); setDetailModalVisible(false); }}>
-                                    <Text style={styles.addBtnText}>{cart.some(c => c.id === selectedItem.id) ? t.inCart : t.addToCart}</Text>
-                                </TouchableOpacity>
+                                {selectedItem.address && (
+                                    <View style={styles.detailInfoRow}>
+                                        <Feather name="map-pin" size={13} color={Brand.textMuted} style={styles.detailInfoIcon} />
+                                        <Text style={styles.detailInfo}>{selectedItem.address}</Text>
+                                    </View>
+                                )}
+                                {selectedItem.phone && (
+                                    <View style={styles.detailInfoRow}>
+                                        <Feather name="phone" size={13} color={Brand.textMuted} style={styles.detailInfoIcon} />
+                                        <Text style={styles.detailInfo}>{selectedItem.phone}</Text>
+                                    </View>
+                                )}
+                                {selectedItem.capacity && (
+                                    <View style={styles.detailInfoRow}>
+                                        <Feather name="users" size={13} color={Brand.textMuted} style={styles.detailInfoIcon} />
+                                        <Text style={styles.detailInfo}>{selectedItem.capacity}</Text>
+                                    </View>
+                                )}
+                                <Button
+                                    label={cart.some(c => c.id === selectedItem.id) ? t.inCart : t.addToCart}
+                                    variant="primary"
+                                    fullWidth
+                                    style={{ marginTop: 20 }}
+                                    onPress={() => { toggleCart(selectedItem); setDetailModalVisible(false); }}
+                                />
                                 <ServiceReviews serviceId={selectedItem.id} lang={lang} />
-                                <TouchableOpacity style={styles.closeBtn} onPress={() => setDetailModalVisible(false)}>
-                                    <Text style={styles.closeBtnText}>{t.close}</Text>
-                                </TouchableOpacity>
+                                <Button label={t.close} variant="ghost" onPress={() => setDetailModalVisible(false)} style={{ marginTop: 6 }} />
                             </ScrollView>
                         )}
                     </Animated.View>
@@ -975,13 +1003,9 @@ const sendToTelegram = async (): Promise<boolean> => {
                                 </TouchableOpacity>
                             ))}
                         </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 }}>
-                            <TouchableOpacity style={styles.secondaryBtn} onPress={() => { setMinPrice(''); setMaxPrice(''); setSortBy('rating'); }}>
-                                <Text style={styles.secondaryBtnText}>{t.reset}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.primaryBtn} onPress={() => setFilterModalVisible(false)}>
-                                <Text style={styles.primaryBtnText}>{t.apply}</Text>
-                            </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, gap: 10 }}>
+                            <Button label={t.reset} variant="secondary" onPress={() => { setMinPrice(''); setMaxPrice(''); setSortBy('rating'); }} style={{ flex: 1 }} />
+                            <Button label={t.apply} variant="primary" onPress={() => setFilterModalVisible(false)} style={{ flex: 1 }} />
                         </View>
                     </TouchableOpacity>
                 </TouchableOpacity>
@@ -991,11 +1015,12 @@ const sendToTelegram = async (): Promise<boolean> => {
             <Modal visible={checkoutModalVisible} transparent animationType="fade" onRequestClose={() => setCheckoutModalVisible(false)}>
                 <TouchableOpacity activeOpacity={1} onPress={() => setCheckoutModalVisible(false)} style={styles.modalOverlayCenter}>
                     <View style={styles.checkoutSuccessContent}>
-                        <Text style={styles.checkoutSuccessTitle}>✓ {t.modalSuccessTitle}</Text>
+                        <View style={styles.checkoutSuccessIconWrap}>
+                            <Feather name="check" size={22} color={Brand.white} />
+                        </View>
+                        <Text style={styles.checkoutSuccessTitle}>{t.modalSuccessTitle}</Text>
                         <Text style={styles.checkoutSuccessDesc}>{formatCurrency(totalEstimate)} {t.modalSuccessDesc}</Text>
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => setCheckoutModalVisible(false)}>
-                            <Text style={styles.primaryBtnText}>{t.close}</Text>
-                        </TouchableOpacity>
+                        <Button label={t.close} variant="primary" fullWidth onPress={() => setCheckoutModalVisible(false)} />
                     </View>
                 </TouchableOpacity>
             </Modal>
@@ -1085,7 +1110,7 @@ const styles = StyleSheet.create({
     card: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#EFECE6', marginBottom: 16, overflow: 'hidden' },
     imageContainer: { height: 180, position: 'relative' },
     cardImg: { width: '100%', height: '100%' },
-    ratingBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(44,38,35,0.85)', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 },
+    ratingBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(44,38,35,0.85)', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 },
     cardRating: { color: '#D4AF37', fontSize: 12, fontWeight: '700' },
     cardBody: { padding: 14 },
     cardTitle: { fontSize: 16, fontWeight: '700', color: '#2C2623', marginBottom: 8 },
@@ -1146,7 +1171,9 @@ const styles = StyleSheet.create({
     detailTitle: { fontSize: 18, fontWeight: '700', color: '#2C2623', marginBottom: 4 },
     detailPrice: { fontSize: 16, fontWeight: '700', color: '#D4AF37', marginBottom: 10 },
     detailDesc: { fontSize: 13, color: '#6A625C', lineHeight: 18, marginBottom: 10 },
-    detailInfo: { fontSize: 12, color: '#8A7E75', marginBottom: 4 },
+    detailInfo: { fontSize: 12, color: '#8A7E75' },
+    detailInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+    detailInfoIcon: { marginRight: 6 },
     reviewSection: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#EFECE6', paddingTop: 14 },
     reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
     reviewTitle: { fontSize: 14, fontWeight: '700', color: '#2C2623' },
@@ -1164,6 +1191,7 @@ const styles = StyleSheet.create({
     sortOptionText: { fontSize: 12, color: '#6A625C', textAlign: 'center' },
     sortOptionTextActive: { color: '#FFF', fontWeight: '700' },
     checkoutSuccessContent: { width: '100%', maxWidth: 320, backgroundColor: '#FFF', borderRadius: 16, padding: 20, alignItems: 'center' },
+    checkoutSuccessIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2C2623', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
     checkoutSuccessTitle: { fontSize: 16, fontWeight: '700', color: '#2C2623', marginBottom: 8 },
     checkoutSuccessDesc: { fontSize: 13, color: '#6A625C', textAlign: 'center', marginBottom: 16 },
     primaryBtn: { backgroundColor: '#2C2623', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
