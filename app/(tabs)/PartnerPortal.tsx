@@ -14,6 +14,8 @@ import { supabase } from '../../lib/supabase';
 import { registerForPushNotificationsAsync, registerPushTokenForUser, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
+import { Feather } from '@expo/vector-icons';
+import { Colors as Brand } from '@/constants/brand';
 import type { CategoryFilter, EventType, Language } from './index';
 
 // ---------- Category tags (kept in sync with index.tsx) ----------
@@ -272,9 +274,7 @@ function NewPasswordScreen({ lang, onDone }: { lang: Language; onDone: () => voi
                     placeholderTextColor="#A0968E"
                 />
                 {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
-                <TouchableOpacity style={[styles.checkoutBtn, { marginTop: 18 }, loading && { opacity: 0.6 }]} disabled={loading} onPress={handleUpdate}>
-                    {loading ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.checkoutBtnText}>{t.resetPasswordBtn}</Text>}
-                </TouchableOpacity>
+                <Button label={t.resetPasswordBtn} variant="gold" fullWidth loading={loading} onPress={handleUpdate} style={{ marginTop: 18 }} />
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -445,9 +445,7 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
                         placeholderTextColor="#A0968E"
                     />
                     {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
-                    <TouchableOpacity style={[styles.checkoutBtn, { marginTop: 18 }, loading && { opacity: 0.6 }]} disabled={loading} onPress={handleVerifySignup}>
-                        {loading ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.checkoutBtnText}>{t.confirmBtn}</Text>}
-                    </TouchableOpacity>
+                    <Button label={t.confirmBtn} variant="gold" fullWidth loading={loading} onPress={handleVerifySignup} style={{ marginTop: 18 }} />
                 </ScrollView>
             </KeyboardAvoidingView>
         );
@@ -473,9 +471,7 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
                                 placeholderTextColor="#A0968E"
                             />
                             {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
-                            <TouchableOpacity style={[styles.checkoutBtn, { marginTop: 18 }, loading && { opacity: 0.6 }]} disabled={loading} onPress={handleSendResetCode}>
-                                {loading ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.checkoutBtnText}>{t.sendResetCode}</Text>}
-                            </TouchableOpacity>
+                            <Button label={t.sendResetCode} variant="gold" fullWidth loading={loading} onPress={handleSendResetCode} style={{ marginTop: 18 }} />
                         </>
                     ) : (
                         <>
@@ -500,9 +496,7 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
                                 placeholderTextColor="#A0968E"
                             />
                             {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
-                            <TouchableOpacity style={[styles.checkoutBtn, { marginTop: 18 }, loading && { opacity: 0.6 }]} disabled={loading} onPress={handleVerifyAndReset}>
-                                {loading ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.checkoutBtnText}>{t.resetPasswordBtn}</Text>}
-                            </TouchableOpacity>
+                            <Button label={t.resetPasswordBtn} variant="gold" fullWidth loading={loading} onPress={handleVerifyAndReset} style={{ marginTop: 18 }} />
                         </>
                     )}
 
@@ -588,11 +582,14 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
 
                 {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
 
-                <TouchableOpacity style={[styles.checkoutBtn, { marginTop: 18 }, loading && { opacity: 0.6 }]} disabled={loading} onPress={handleSubmit}>
-                    {loading ? <ActivityIndicator color="#2C2623" /> : (
-                        <Text style={styles.checkoutBtnText}>{mode === 'login' ? t.loginBtn : t.signupBtn}</Text>
-                    )}
-                </TouchableOpacity>
+                <Button
+                    label={mode === 'login' ? t.loginBtn : t.signupBtn}
+                    variant="gold"
+                    fullWidth
+                    loading={loading}
+                    onPress={handleSubmit}
+                    style={{ marginTop: 18 }}
+                />
 
                 <AdBanner />
             </ScrollView>
@@ -879,27 +876,25 @@ function ServiceForm({
                     {images.map((url, idx) => (
                         <View key={idx} style={styles.partnerImageGridItem}>
                             <Image source={{ uri: url }} style={styles.partnerImageGridImg} resizeMode="cover" />
-                            <TouchableOpacity style={styles.partnerImageRemoveBtn} onPress={() => removeImage(url)}>
-                                <Text style={styles.partnerImageRemoveBtnText}>✕</Text>
-                            </TouchableOpacity>
+                            <IconButton icon="x" size={22} variant="dark" onPress={() => removeImage(url)} style={styles.partnerImageRemoveBtn} />
                         </View>
                     ))}
                 </View>
             )}
             {images.length < 6 && (
-                <TouchableOpacity style={styles.partnerImagePickBtn} onPress={pickImages} disabled={uploading}>
-                    {uploading ? <ActivityIndicator color="#D4AF37" /> : <Text style={styles.partnerImagePickBtnText}>{t.partnerImagePick}</Text>}
-                </TouchableOpacity>
+                <Button
+                    label={t.partnerImagePick}
+                    variant="ghost"
+                    loading={uploading}
+                    onPress={pickImages}
+                    style={styles.partnerImagePickBtn}
+                />
             )}
             {!title.trim() && <Text style={styles.partnerImageHint}>{t.partnerImageNeedTitle}</Text>}
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-                <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, alignItems: 'center' }]} onPress={onCancel}>
-                    <Text style={styles.secondaryBtnText}>{t.cancel}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.checkoutBtn, { flex: 1 }, (saving || uploading) && { opacity: 0.6 }]} disabled={saving || uploading} onPress={handleSave}>
-                    {saving ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.checkoutBtnText}>{t.save}</Text>}
-                </TouchableOpacity>
+                <Button label={t.cancel} variant="secondary" onPress={onCancel} style={{ flex: 1 }} />
+                <Button label={t.save} variant="gold" loading={saving} disabled={saving || uploading} onPress={handleSave} style={{ flex: 1 }} />
             </View>
             <View style={{ height: 30 }} />
         </ScrollView>
@@ -1109,12 +1104,8 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                                     </View>
                                     <Text style={styles.dashCardPrice}>{s.price} {s.unit}</Text>
                                     <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                                        <TouchableOpacity style={styles.dashEditBtn} onPress={() => setEditing(s)}>
-                                            <Text style={styles.dashEditBtnText}>{t.edit}</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={styles.dashDeleteBtn} onPress={() => setDeleteTarget(s)}>
-                                            <Text style={styles.dashDeleteBtnText}>{t.delete}</Text>
-                                        </TouchableOpacity>
+                                        <Button label={t.edit} variant="primary" size="sm" onPress={() => setEditing(s)} />
+                                        <Button label={t.delete} variant="danger" size="sm" onPress={() => setDeleteTarget(s)} />
                                     </View>
                                 </View>
                             </View>
@@ -1148,13 +1139,17 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                                 </View>
                                 <Text style={styles.orderCustomerLabel}>{t.orderCustomer}</Text>
                                 <Text style={styles.orderCustomerName}>{o.customer_name}</Text>
-                                <Text style={styles.orderDetail}>📞 {o.customer_phone}</Text>
-                                <Text style={styles.orderDetail}>📅 {o.event_date} · {o.guests_count} {t.orderGuests}</Text>
+                                <View style={styles.orderDetailRow}>
+                                    <Feather name="phone" size={12} color={Brand.textMuted} style={styles.orderDetailIcon} />
+                                    <Text style={styles.orderDetail}>{o.customer_phone}</Text>
+                                </View>
+                                <View style={styles.orderDetailRow}>
+                                    <Feather name="calendar" size={12} color={Brand.textMuted} style={styles.orderDetailIcon} />
+                                    <Text style={styles.orderDetail}>{o.event_date} · {o.guests_count} {t.orderGuests}</Text>
+                                </View>
                                 <Text style={styles.orderPrice}>{o.item_price} AZN</Text>
                                 {o.status === 'new' && (
-                                    <TouchableOpacity style={styles.orderContactBtn} onPress={() => markOrderContacted(o.id)}>
-                                        <Text style={styles.orderContactBtnText}>{t.orderMarkContacted}</Text>
-                                    </TouchableOpacity>
+                                    <Button label={t.orderMarkContacted} variant="primary" size="sm" fullWidth onPress={() => markOrderContacted(o.id)} style={{ marginTop: 10 }} />
                                 )}
                             </View>
                         ))
@@ -1163,9 +1158,12 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
             )}
 
             {activeTab === 'services' && (
-                <TouchableOpacity style={[styles.fabAddBtn, Platform.OS === 'android' && { bottom: insets.bottom + 20 }]} onPress={() => setEditing('new')}>
-                    <Text style={styles.fabAddBtnText}>{t.addNew}</Text>
-                </TouchableOpacity>
+                <Button
+                    label={t.addNew}
+                    variant="gold"
+                    onPress={() => setEditing('new')}
+                    style={[styles.fabAddBtn, Platform.OS === 'android' && { bottom: insets.bottom + 20 }]}
+                />
             )}
 
             <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
@@ -1174,12 +1172,8 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                         <Text style={styles.confirmTitle}>{t.deleteConfirmTitle}</Text>
                         <Text style={styles.confirmMsg}>{t.deleteConfirmMsg}</Text>
                         <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-                            <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, alignItems: 'center' }]} onPress={() => setDeleteTarget(null)}>
-                                <Text style={styles.secondaryBtnText}>{t.deleteConfirmNo}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.dangerBtn, { flex: 1, alignItems: 'center' }]} onPress={handleDelete}>
-                                <Text style={styles.dangerBtnText}>{t.deleteConfirmYes}</Text>
-                            </TouchableOpacity>
+                            <Button label={t.deleteConfirmNo} variant="secondary" onPress={() => setDeleteTarget(null)} style={{ flex: 1 }} />
+                            <Button label={t.deleteConfirmYes} variant="danger" onPress={handleDelete} style={{ flex: 1 }} />
                         </View>
                     </View>
                 </View>
@@ -1254,9 +1248,7 @@ export default function PartnerPortal({ lang, visible, onClose }: { lang: Langua
         <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
             <View style={{ flex: 1, backgroundColor: '#FAF8F5', paddingTop: Platform.OS === 'ios' ? 50 : (session && !checking ? 0 : 20) }}>
                 {(!session || checking) && (
-                    <TouchableOpacity onPress={onClose} style={styles.rootCloseBtn}>
-                        <Text style={styles.rootCloseBtnText}>✕</Text>
-                    </TouchableOpacity>
+                    <IconButton icon="x" onPress={onClose} style={styles.rootCloseBtn} />
                 )}
                 {checking ? (
                     <ActivityIndicator color="#D4AF37" style={{ marginTop: 60 }} />
@@ -1335,7 +1327,9 @@ const styles = StyleSheet.create({
     orderServiceTitle: { fontSize: 14, fontWeight: '700', color: '#2C2623', flex: 1, marginRight: 8 },
     orderCustomerLabel: { fontSize: 10, color: '#A0968E', textTransform: 'uppercase', marginTop: 10 },
     orderCustomerName: { fontSize: 14, fontWeight: '700', color: '#2C2623', marginTop: 2 },
-    orderDetail: { fontSize: 12, color: '#8A7E75', marginTop: 4 },
+    orderDetail: { fontSize: 12, color: '#8A7E75' },
+    orderDetailRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+    orderDetailIcon: { marginRight: 6 },
     orderPrice: { fontSize: 14, fontWeight: '700', color: '#D4AF37', marginTop: 8 },
     orderContactBtn: { backgroundColor: '#2C2623', paddingVertical: 8, borderRadius: 8, alignItems: 'center', marginTop: 10 },
     orderContactBtnText: { color: '#D4AF37', fontSize: 12, fontWeight: '700' },
