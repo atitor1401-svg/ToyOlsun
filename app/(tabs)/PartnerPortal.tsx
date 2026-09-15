@@ -12,6 +12,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../lib/supabase';
 import { registerForPushNotificationsAsync, registerPushTokenForUser, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
+import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
 import type { CategoryFilter, EventType, Language } from './index';
 
 // ---------- Category tags (kept in sync with index.tsx) ----------
@@ -1052,15 +1054,9 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
             <View style={[styles.dashHeader, Platform.OS === 'android' && { paddingTop: insets.top + 12 }]}>
                 <Text style={styles.dashTitle}>{activeTab === 'services' ? t.myServices : t.myOrders}</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TouchableOpacity style={styles.dashIconBtn} onPress={() => setShowAccountSettings(true)}>
-                        <Text style={styles.dashIconBtnText}>⚙️</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.dashIconBtn} onPress={async () => { await supabase.auth.signOut(); onLogout(); }}>
-                        <Text style={styles.dashIconBtnText}>⎋</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.dashIconBtn} onPress={onClose}>
-                        <Text style={styles.dashIconBtnText}>✕</Text>
-                    </TouchableOpacity>
+                    <IconButton icon="settings" onPress={() => setShowAccountSettings(true)} />
+                    <IconButton icon="log-out" onPress={async () => { await supabase.auth.signOut(); onLogout(); }} />
+                    <IconButton icon="x" onPress={onClose} />
                 </View>
             </View>
 
@@ -1189,22 +1185,23 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                     <View style={styles.confirmBox}>
                         <Text style={styles.confirmTitle}>{t.accountSettings}</Text>
 
-                        <TouchableOpacity
-                            style={[styles.secondaryBtn, { alignItems: 'center' }, notifStatus === 'loading' && { opacity: 0.6 }]}
+                        <Button
+                            label={notifStatus === 'granted' ? t.notifGranted : notifStatus === 'denied' ? t.notifDenied : t.notifEnable}
+                            variant="secondary"
+                            icon="bell"
+                            loading={notifStatus === 'loading'}
                             disabled={notifStatus === 'loading' || notifStatus === 'granted'}
                             onPress={handleEnableNotifications}
-                        >
-                            {notifStatus === 'loading' ? <ActivityIndicator color="#2C2623" /> : (
-                                <Text style={styles.secondaryBtnText}>
-                                    {notifStatus === 'granted' ? t.notifGranted : notifStatus === 'denied' ? t.notifDenied : t.notifEnable}
-                                </Text>
-                            )}
-                        </TouchableOpacity>
+                            style={{ marginTop: 4 }}
+                        />
 
-                        <Text style={[styles.confirmTitle, { marginTop: 20 }]}>{t.deleteAccount}</Text>
+                        <Text style={[styles.confirmTitle, { marginTop: 24 }]}>{t.deleteAccount}</Text>
                         <Text style={styles.confirmMsg}>{t.deleteAccountDesc}</Text>
-                        <TouchableOpacity
-                            style={[styles.dangerBtn, { marginTop: 16, alignItems: 'center' }, deletingAccount && { opacity: 0.6 }]}
+                        <Button
+                            label={t.deleteAccount}
+                            variant="danger"
+                            icon="trash-2"
+                            loading={deletingAccount}
                             disabled={deletingAccount}
                             onPress={() => {
                                 Alert.alert(t.deleteConfirmTitle, t.deleteAccountConfirmMsg, [
@@ -1212,12 +1209,14 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                                     { text: t.deleteConfirmYes, style: 'destructive', onPress: handleDeleteAccount },
                                 ]);
                             }}
-                        >
-                            {deletingAccount ? <ActivityIndicator color="#FFF" /> : <Text style={styles.dangerBtnText}>{t.deleteAccount}</Text>}
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 10, alignItems: 'center' }]} onPress={() => setShowAccountSettings(false)}>
-                            <Text style={styles.secondaryBtnText}>{t.cancel}</Text>
-                        </TouchableOpacity>
+                            style={{ marginTop: 16 }}
+                        />
+                        <Button
+                            label={t.cancel}
+                            variant="ghost"
+                            onPress={() => setShowAccountSettings(false)}
+                            style={{ marginTop: 8 }}
+                        />
                     </View>
                 </View>
             </Modal>
