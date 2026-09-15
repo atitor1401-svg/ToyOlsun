@@ -81,7 +81,7 @@ const PORTAL_TEXT = {
     az: {
         login: 'Daxil ol', signup: 'Qeydiyyatdan keç', email: 'Email', password: 'Şifrə',
         loginBtn: 'DAXİL OL', signupBtn: 'QEYDİYYATDAN KEÇ', switchToSignup: 'Hesabın yoxdur? Qeydiyyatdan keç',
-        switchToLogin: 'Artıq hesabın var? Daxil ol', logout: 'Çıxış', myServices: 'Xidmətlərim',
+        switchToLogin: 'Artıq hesabın var? Daxil ol', logout: 'Çıxış', logoutConfirmMsg: 'Hesabdan çıxmaq istədiyinizə əminsiniz?', myServices: 'Xidmətlərim',
         myOrders: 'Müraciətlər', noOrders: 'Hələ heç bir müraciət yoxdur',
         noOrdersSub: 'Xidmətiniz təsdiqləndikdən sonra müştəri müraciətləri burada görünəcək',
         orderNew: 'Yeni', orderSeen: 'Baxıldı', orderContacted: 'Əlaqə saxlanıldı', orderCompleted: 'Tamamlandı',
@@ -118,7 +118,7 @@ const PORTAL_TEXT = {
     ru: {
         login: 'Войти', signup: 'Регистрация', email: 'Email', password: 'Пароль',
         loginBtn: 'ВОЙТИ', signupBtn: 'ЗАРЕГИСТРИРОВАТЬСЯ', switchToSignup: 'Нет аккаунта? Зарегистрироваться',
-        switchToLogin: 'Уже есть аккаунт? Войти', logout: 'Выйти', myServices: 'Услуги',
+        switchToLogin: 'Уже есть аккаунт? Войти', logout: 'Выйти', logoutConfirmMsg: 'Вы уверены, что хотите выйти из аккаунта?', myServices: 'Услуги',
         myOrders: 'Заявки', noOrders: 'Пока нет заявок',
         noOrdersSub: 'После одобрения услуги здесь появятся заявки клиентов',
         orderNew: 'Новая', orderSeen: 'Просмотрено', orderContacted: 'Связались', orderCompleted: 'Завершено',
@@ -155,7 +155,7 @@ const PORTAL_TEXT = {
     en: {
         login: 'Log In', signup: 'Sign Up', email: 'Email', password: 'Password',
         loginBtn: 'LOG IN', signupBtn: 'SIGN UP', switchToSignup: "Don't have an account? Sign up",
-        switchToLogin: 'Already have an account? Log in', logout: 'Log Out', myServices: 'Services',
+        switchToLogin: 'Already have an account? Log in', logout: 'Log Out', logoutConfirmMsg: 'Are you sure you want to log out?', myServices: 'Services',
         myOrders: 'Orders', noOrders: 'No orders yet',
         noOrdersSub: 'Once your service is approved, customer orders will appear here',
         orderNew: 'New', orderSeen: 'Seen', orderContacted: 'Contacted', orderCompleted: 'Completed',
@@ -1055,7 +1055,12 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                 <Text style={styles.dashTitle}>{activeTab === 'services' ? t.myServices : t.myOrders}</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                     <IconButton icon="settings" onPress={() => setShowAccountSettings(true)} />
-                    <IconButton icon="log-out" onPress={async () => { await supabase.auth.signOut(); onLogout(); }} />
+                    <IconButton icon="log-out" onPress={() => {
+                        Alert.alert(t.logout, t.logoutConfirmMsg, [
+                            { text: t.deleteConfirmNo, style: 'cancel' },
+                            { text: t.deleteConfirmYes, style: 'destructive', onPress: async () => { await supabase.auth.signOut(); onLogout(); } },
+                        ]);
+                    }} />
                     <IconButton icon="x" onPress={onClose} />
                 </View>
             </View>
