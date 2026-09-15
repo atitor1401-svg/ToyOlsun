@@ -7,6 +7,10 @@ import {
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
 import { registerForPushNotificationsAsync, registerPushTokenForUser, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
+import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
+import { Feather } from '@expo/vector-icons';
+import { Colors as Brand } from '@/constants/brand';
 import type { Language } from './index';
 
 // ---------- Simple client-side profanity filter ----------
@@ -282,9 +286,7 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
                     <Text style={styles.inputLabel}>{t.otpCode}</Text>
                     <TextInput style={styles.input} value={confirmCode} onChangeText={setConfirmCode} keyboardType="number-pad" placeholder="123456" placeholderTextColor="#A0968E" />
                     {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
-                    <TouchableOpacity style={[styles.primaryBtn, { marginTop: 18 }, loading && { opacity: 0.6 }]} disabled={loading} onPress={handleVerifySignup}>
-                        {loading ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.primaryBtnText}>{t.confirmBtn}</Text>}
-                    </TouchableOpacity>
+                    <Button label={t.confirmBtn} variant="gold" fullWidth loading={loading} onPress={handleVerifySignup} style={{ marginTop: 18 }} />
                 </ScrollView>
             </KeyboardAvoidingView>
         );
@@ -301,9 +303,7 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
                             <Text style={styles.inputLabel}>{t.email}</Text>
                             <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="name@example.com" placeholderTextColor="#A0968E" />
                             {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
-                            <TouchableOpacity style={[styles.primaryBtn, { marginTop: 18 }, loading && { opacity: 0.6 }]} disabled={loading} onPress={handleSendResetCode}>
-                                {loading ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.primaryBtnText}>{t.sendResetCode}</Text>}
-                            </TouchableOpacity>
+                            <Button label={t.sendResetCode} variant="gold" fullWidth loading={loading} onPress={handleSendResetCode} style={{ marginTop: 18 }} />
                         </>
                     ) : (
                         <>
@@ -313,9 +313,7 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
                             <Text style={styles.inputLabel}>{t.newPassword}</Text>
                             <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry autoCapitalize="none" placeholder="••••••••" placeholderTextColor="#A0968E" />
                             {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
-                            <TouchableOpacity style={[styles.primaryBtn, { marginTop: 18 }, loading && { opacity: 0.6 }]} disabled={loading} onPress={handleVerifyAndReset}>
-                                {loading ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.primaryBtnText}>{t.resetPasswordBtn}</Text>}
-                            </TouchableOpacity>
+                            <Button label={t.resetPasswordBtn} variant="gold" fullWidth loading={loading} onPress={handleVerifyAndReset} style={{ marginTop: 18 }} />
                         </>
                     )}
                     <TouchableOpacity style={{ marginTop: 16, alignItems: 'center' }} onPress={() => { setMode('login'); setErrorMsg(''); }}>
@@ -382,9 +380,14 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
 
                 {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
 
-                <TouchableOpacity style={[styles.primaryBtn, { marginTop: 18 }, loading && { opacity: 0.6 }]} disabled={loading} onPress={handleSubmit}>
-                    {loading ? <ActivityIndicator color="#2C2623" /> : <Text style={styles.primaryBtnText}>{mode === 'login' ? t.loginBtn : t.signupBtn}</Text>}
-                </TouchableOpacity>
+                <Button
+                    label={mode === 'login' ? t.loginBtn : t.signupBtn}
+                    variant="gold"
+                    fullWidth
+                    loading={loading}
+                    onPress={handleSubmit}
+                    style={{ marginTop: 18 }}
+                />
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -480,15 +483,9 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
             <View style={styles.dashHeader}>
                 <Text style={styles.dashTitle}>{t.myOrders}</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TouchableOpacity style={styles.iconBtn} onPress={() => setShowSettings(true)}>
-                        <Text style={styles.iconBtnText}>⚙️</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconBtn} onPress={handleLogoutPress}>
-                        <Text style={styles.iconBtnText}>⎋</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconBtn} onPress={onClose}>
-                        <Text style={styles.iconBtnText}>✕</Text>
-                    </TouchableOpacity>
+                    <IconButton icon="settings" onPress={() => setShowSettings(true)} />
+                    <IconButton icon="log-out" onPress={handleLogoutPress} />
+                    <IconButton icon="x" onPress={onClose} />
                 </View>
             </View>
 
@@ -516,12 +513,13 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
                                     </Text>
                                 </View>
                             </View>
-                            <Text style={styles.orderDetail}>📅 {o.event_date} · {o.guests_count} {t.orderGuests}</Text>
+                            <View style={styles.orderDetailRow}>
+                                <Feather name="calendar" size={12} color={Brand.textMuted} style={styles.orderDetailIcon} />
+                                <Text style={styles.orderDetail}>{o.event_date} · {o.guests_count} {t.orderGuests}</Text>
+                            </View>
                             <Text style={styles.orderPrice}>{o.item_price} AZN</Text>
                             {o.status === 'new' && (
-                                <TouchableOpacity style={styles.cancelBtn} onPress={() => setCancelTarget(o)}>
-                                    <Text style={styles.cancelBtnText}>{t.orderCancel}</Text>
-                                </TouchableOpacity>
+                                <Button label={t.orderCancel} variant="danger" size="sm" fullWidth onPress={() => setCancelTarget(o)} style={{ marginTop: 10 }} />
                             )}
                         </View>
                     ))
@@ -534,12 +532,8 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
                         <Text style={styles.confirmTitle}>{t.orderCancelConfirmTitle}</Text>
                         <Text style={styles.confirmMsg}>{t.orderCancelConfirmMsg}</Text>
                         <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-                            <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, alignItems: 'center' }]} onPress={() => setCancelTarget(null)}>
-                                <Text style={styles.secondaryBtnText}>{t.orderCancelNo}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.dangerBtn, { flex: 1, alignItems: 'center' }]} onPress={handleCancelOrder}>
-                                <Text style={styles.dangerBtnText}>{t.orderCancelYes}</Text>
-                            </TouchableOpacity>
+                            <Button label={t.orderCancelNo} variant="secondary" onPress={() => setCancelTarget(null)} style={{ flex: 1 }} />
+                            <Button label={t.orderCancelYes} variant="danger" onPress={handleCancelOrder} style={{ flex: 1 }} />
                         </View>
                     </View>
                 </View>
@@ -550,22 +544,23 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
                     <View style={styles.confirmBox}>
                         <Text style={styles.confirmTitle}>{t.accountSettings}</Text>
 
-                        <TouchableOpacity
-                            style={[styles.secondaryBtn, { alignItems: 'center' }, notifStatus === 'loading' && { opacity: 0.6 }]}
+                        <Button
+                            label={notifStatus === 'granted' ? t.notifGranted : notifStatus === 'denied' ? t.notifDenied : t.notifEnable}
+                            variant="secondary"
+                            icon="bell"
+                            loading={notifStatus === 'loading'}
                             disabled={notifStatus === 'loading' || notifStatus === 'granted'}
                             onPress={handleEnableNotifications}
-                        >
-                            {notifStatus === 'loading' ? <ActivityIndicator color="#2C2623" /> : (
-                                <Text style={styles.secondaryBtnText}>
-                                    {notifStatus === 'granted' ? t.notifGranted : notifStatus === 'denied' ? t.notifDenied : t.notifEnable}
-                                </Text>
-                            )}
-                        </TouchableOpacity>
+                            style={{ marginTop: 4 }}
+                        />
 
-                        <Text style={[styles.confirmTitle, { marginTop: 20 }]}>{t.deleteAccount}</Text>
+                        <Text style={[styles.confirmTitle, { marginTop: 24 }]}>{t.deleteAccount}</Text>
                         <Text style={styles.confirmMsg}>{t.deleteAccountDesc}</Text>
-                        <TouchableOpacity
-                            style={[styles.dangerBtn, { marginTop: 16, alignItems: 'center' }, deletingAccount && { opacity: 0.6 }]}
+                        <Button
+                            label={t.deleteAccount}
+                            variant="danger"
+                            icon="trash-2"
+                            loading={deletingAccount}
                             disabled={deletingAccount}
                             onPress={() => {
                                 Alert.alert(t.deleteAccount, t.deleteAccountConfirmMsg, [
@@ -573,12 +568,9 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
                                     { text: t.deleteConfirmYes, style: 'destructive', onPress: handleDeleteAccount },
                                 ]);
                             }}
-                        >
-                            {deletingAccount ? <ActivityIndicator color="#FFF" /> : <Text style={styles.dangerBtnText}>{t.deleteAccount}</Text>}
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 10, alignItems: 'center' }]} onPress={() => setShowSettings(false)}>
-                            <Text style={styles.secondaryBtnText}>{t.cancel}</Text>
-                        </TouchableOpacity>
+                            style={{ marginTop: 16 }}
+                        />
+                        <Button label={t.cancel} variant="ghost" onPress={() => setShowSettings(false)} style={{ marginTop: 8 }} />
                     </View>
                 </View>
             </Modal>
@@ -722,9 +714,7 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
                     placeholderTextColor="#A0968E"
                     multiline
                 />
-                <TouchableOpacity style={[styles.reviewSubmitBtn, submitting && { opacity: 0.6 }]} disabled={submitting} onPress={handleSubmitReview}>
-                    {submitting ? <ActivityIndicator color="#2C2623" size="small" /> : <Text style={styles.reviewSubmitBtnText}>{t.reviewSubmit}</Text>}
-                </TouchableOpacity>
+                <Button label={t.reviewSubmit} variant="gold" size="sm" loading={submitting} onPress={handleSubmitReview} style={styles.reviewSubmitBtn} />
             </View>
             {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
 
@@ -745,7 +735,7 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
                         </View>
                         <Text style={styles.reviewComment}>{r.comment}</Text>
                         <TouchableOpacity style={styles.likeRow} onPress={() => handleToggleLike(r)} disabled={!userId}>
-                            <Text style={[styles.likeIcon, r.liked_by_me && styles.likeIconActive]}>{r.liked_by_me ? '❤️' : '🤍'}</Text>
+                            <Feather name="heart" size={15} color={r.liked_by_me ? Brand.danger : Brand.textPlaceholder} />
                             <Text style={styles.likeCount}>{r.like_count}</Text>
                         </TouchableOpacity>
                     </View>
@@ -783,9 +773,7 @@ export default function CustomerPortal({ lang, visible, onClose }: { lang: Langu
         <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
             <View style={{ flex: 1, backgroundColor: '#FAF8F5', paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
                 {(!session || checking) && (
-                    <TouchableOpacity onPress={onClose} style={styles.rootCloseBtn}>
-                        <Text style={styles.rootCloseBtnText}>✕</Text>
-                    </TouchableOpacity>
+                    <IconButton icon="x" onPress={onClose} style={styles.rootCloseBtn} />
                 )}
                 {checking ? (
                     <ActivityIndicator color="#D4AF37" style={{ marginTop: 60 }} />
@@ -827,7 +815,9 @@ const styles = StyleSheet.create({
     rootCloseBtnText: { fontSize: 16, color: '#8A7E75' },
     orderCard: { backgroundColor: '#FFF', borderRadius: 14, borderWidth: 1, borderColor: '#EFECE6', padding: 14, marginBottom: 14 },
     orderTitle: { fontSize: 14, fontWeight: '700', color: '#2C2623', flex: 1, marginRight: 8 },
-    orderDetail: { fontSize: 12, color: '#8A7E75', marginTop: 6 },
+    orderDetail: { fontSize: 12, color: '#8A7E75' },
+    orderDetailRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+    orderDetailIcon: { marginRight: 6 },
     orderPrice: { fontSize: 14, fontWeight: '700', color: '#D4AF37', marginTop: 6 },
     statusBadge: { backgroundColor: '#F0E4C0', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 },
     statusBadgeApproved: { backgroundColor: '#DCEEDC' },
