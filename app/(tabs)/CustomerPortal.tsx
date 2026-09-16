@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
-import { registerForPushNotificationsAsync, registerPushTokenForUser, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
+import { registerForPushNotificationsAsync, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Feather } from '@expo/vector-icons';
@@ -756,15 +756,9 @@ export default function CustomerPortal({ lang, visible, onClose }: { lang: Langu
         supabase.auth.getSession().then(({ data }) => {
             setSession(data.session);
             setChecking(false);
-            if (data.session?.user?.id) {
-                registerPushTokenForUser(data.session.user.id);
-            }
         });
-        const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
             setSession(newSession);
-            if (event === 'SIGNED_IN' && newSession?.user?.id) {
-                registerPushTokenForUser(newSession.user.id);
-            }
         });
         return () => { listener.subscription.unsubscribe(); };
     }, []);

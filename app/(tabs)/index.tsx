@@ -470,20 +470,22 @@ export default function LuxuryApp() {
         }
     };
 
-    useEffect(() => {
-        supabase.auth.getSession().then(({ data }) => checkUserRole(data.session));
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-            checkUserRole(newSession);
-        });
-        return () => { listener.subscription.unsubscribe(); };
-    }, []);
-
-    // Ask for notification permission right on app open, not just after
-    // login — anyone browsing the catalog (logged in or not) can opt in.
+    // Registers the push token here only (not also in PartnerPortal/
+    // CustomerPortal, which are always mounted alongside this screen) —
+    // doing it from all three at once caused concurrent duplicate upserts
+    // of the same token and intermittent RLS errors in the logs.
     useEffect(() => {
         supabase.auth.getSession().then(({ data }) => {
+            checkUserRole(data.session);
             registerPushTokenForUser(data.session?.user?.id ?? null);
         });
+        const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+            checkUserRole(newSession);
+            if (event === 'SIGNED_IN') {
+                registerPushTokenForUser(newSession?.user?.id ?? null);
+            }
+        });
+        return () => { listener.subscription.unsubscribe(); };
     }, []);
 
     useEffect(() => {
