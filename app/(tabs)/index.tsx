@@ -720,14 +720,17 @@ const sendToTelegram = async (): Promise<boolean> => {
 
     const handleShare = async (item: ServiceItem) => {
         Haptics.selectionAsync();
-        // Built by hand rather than via ExpoLinking.createURL(), which was
-        // observed generating an exp://<dev-server> link even in the
-        // production build (likely due to how OTA/EAS Update loads the JS
-        // bundle) — the app's scheme is fixed (app.json), so this is safe.
-        const deepLink = `toyolsun://service?id=${item.id}`;
+        // WhatsApp (and most messengers) only auto-linkify standard http(s)
+        // URLs — a bare toyolsun:// scheme link shows as plain, untappable
+        // text. Store links are real https:// URLs so they're always
+        // tappable; we can't know the recipient's platform from the
+        // sender's device, so both are included and whoever taps the
+        // matching one lands on the right store.
+        const iosLink = 'https://apps.apple.com/app/id6808000909';
+        const androidLink = 'https://play.google.com/store/apps/details?id=com.ibo96.ToyOlsun';
         try {
             await Share.share({
-                message: `${item.title} — ${formatCurrency(item.price)} ${item.unit}\n${deepLink}`,
+                message: `${item.title} — ${formatCurrency(item.price)} ${item.unit}\n\nToyOlsun tətbiqini yükləyin:\niPhone: ${iosLink}\nAndroid: ${androidLink}`,
             });
         } catch {
             // User cancelled or share sheet failed to open — nothing to do
