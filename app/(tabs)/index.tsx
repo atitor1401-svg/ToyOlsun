@@ -704,7 +704,11 @@ const sendToTelegram = async (): Promise<boolean> => {
 
     const handleShare = async (item: ServiceItem) => {
         Haptics.selectionAsync();
-        const deepLink = ExpoLinking.createURL('service', { queryParams: { id: item.id } });
+        // Built by hand rather than via ExpoLinking.createURL(), which was
+        // observed generating an exp://<dev-server> link even in the
+        // production build (likely due to how OTA/EAS Update loads the JS
+        // bundle) — the app's scheme is fixed (app.json), so this is safe.
+        const deepLink = `toyolsun://service?id=${item.id}`;
         try {
             await Share.share({
                 message: `${item.title} — ${formatCurrency(item.price)} ${item.unit}\n${deepLink}`,
