@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     StyleSheet, Text, View, TextInput, TouchableOpacity,
         ScrollView, StatusBar, Modal, Platform, Linking,
-    PanResponder, Animated, KeyboardAvoidingView, AppState
+    PanResponder, Animated, KeyboardAvoidingView, AppState, Share
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import * as ExpoLinking from 'expo-linking';
 import { supabase } from '../../lib/supabase';
 import { registerPushTokenForUser } from '../../lib/notifications';
 import { useWindowDimensions, ActivityIndicator } from 'react-native';
@@ -49,6 +50,13 @@ export interface ServiceItem {
     images?: string[];
     telegram_chat_id?: string;
     owner_id?: string;
+}
+
+interface ReviewSummary {
+    count: number;
+    latestAuthor: string;
+    latestComment: string;
+    latestLikes: number;
 }
 
 const TAG_ID_LABELS: Record<string, { az: string; ru: string; en: string }> = {
@@ -400,10 +408,50 @@ function ImageWithLoader({ uri, width }: { uri: string; width: number }) {
     );
 }
 
+// Swipeable, Instagram-style photo carousel shown directly on the catalog
+// card — lets people flip through a listing's photos without opening the
+// detail view. Falls back to the single cover image when there's no album.
+function CardImageCarousel({ images, fallbackImg, children }: { images?: string[]; fallbackImg: string; children?: React.ReactNode }) {
+    const [containerWidth, setContainerWidth] = useState(0);
+    const [activeIndex, setActiveIndex] = useState(0);
+    const list = images && images.length > 0 ? images : [fallbackImg];
+    const height = containerWidth * (5 / 4); // Instagram's 4:5 feed-photo ratio
+
+    return (
+        <View style={[styles.imageContainer, { height: height || undefined }]} onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}>
+            {containerWidth > 0 && (
+                <ScrollView
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    scrollEnabled={list.length > 1}
+                    onMomentumScrollEnd={(e) => {
+                        const idx = Math.round(e.nativeEvent.contentOffset.x / containerWidth);
+                        setActiveIndex(idx);
+                    }}
+                >
+                    {list.map((uri, idx) => (
+                        <Image key={idx} source={{ uri }} style={{ width: containerWidth, height }} contentFit="cover" />
+                    ))}
+                </ScrollView>
+            )}
+            {list.length > 1 && (
+                <View style={styles.carouselDots} pointerEvents="none">
+                    {list.map((_, idx) => (
+                        <View key={idx} style={[styles.carouselDot, idx === activeIndex && styles.carouselDotActive]} />
+                    ))}
+                </View>
+            )}
+            {children}
+        </View>
+    );
+}
+
 export default function LuxuryApp() {
     const insets = useSafeAreaInsets();
     const [lang, setLang] = useState<Language>('az');
     const [services, setServices] = useState<ServiceItem[]>([]);
+    const [reviewSummaries, setReviewSummaries] = useState<Record<string, ReviewSummary>>({});
     const [loadingServices, setLoadingServices] = useState<boolean>(true);
     const [loadError, setLoadError] = useState<boolean>(false);
     const [selectedEventType, setSelectedEventType] = useState<EventType | null>(null);
@@ -514,6 +562,45 @@ const { data, error } = await Promise.race([
     fetchServices();
 }, []);
 
+    // Review previews shown directly on catalog cards (comment count + the
+    // latest comment with its like count) — fetched once, grouped
+    // client-side by service_id, same pattern ServiceReviews itself uses.
+    useEffect(() => {
+        async function fetchReviewSummaries() {
+            const { data: reviewRows } = await supabase
+                .from('customer_reviews')
+                .select('id, service_id, customer_name, comment, created_at')
+                .order('created_at', { ascending: false });
+            if (!reviewRows || reviewRows.length === 0) return;
+
+            const latestByService = new Map<string, typeof reviewRows[number]>();
+            const countByService = new Map<string, number>();
+            for (const r of reviewRows) {
+                countByService.set(r.service_id, (countByService.get(r.service_id) || 0) + 1);
+                if (!latestByService.has(r.service_id)) latestByService.set(r.service_id, r);
+            }
+
+            const latestReviewIds = Array.from(latestByService.values()).map(r => r.id);
+            const { data: likeRows } = await supabase.from('review_likes').select('review_id').in('review_id', latestReviewIds);
+            const likeCountByReview = new Map<string, number>();
+            for (const l of likeRows || []) {
+                likeCountByReview.set(l.review_id, (likeCountByReview.get(l.review_id) || 0) + 1);
+            }
+
+            const summaries: Record<string, ReviewSummary> = {};
+            for (const [serviceId, review] of latestByService.entries()) {
+                summaries[serviceId] = {
+                    count: countByService.get(serviceId) || 0,
+                    latestAuthor: review.customer_name,
+                    latestComment: review.comment,
+                    latestLikes: likeCountByReview.get(review.id) || 0,
+                };
+            }
+            setReviewSummaries(summaries);
+        }
+        fetchReviewSummaries();
+    }, []);
+
     const daysLeft = useMemo(() => calculateDaysLeft(eventDate), [eventDate]);
     const formattedDate = useMemo(() => {
         if (!eventDate) return 'Tarix seçin';
@@ -614,6 +701,34 @@ const sendToTelegram = async (): Promise<boolean> => {
         translateY.setValue(0);
         setDetailModalVisible(true);
     };
+
+    const handleShare = async (item: ServiceItem) => {
+        Haptics.selectionAsync();
+        const deepLink = ExpoLinking.createURL('service', { queryParams: { id: item.id } });
+        try {
+            await Share.share({
+                message: `${item.title} — ${formatCurrency(item.price)} ${item.unit}\n${deepLink}`,
+            });
+        } catch {
+            // User cancelled or share sheet failed to open — nothing to do
+        }
+    };
+
+    // Opens the shared item's detail view when the app is launched (or
+    // brought to foreground) via a toyolsun://service?id=... deep link.
+    useEffect(() => {
+        const openFromUrl = (url: string | null) => {
+            if (!url || services.length === 0) return;
+            const { queryParams } = ExpoLinking.parse(url);
+            const id = queryParams?.id;
+            if (!id) return;
+            const item = services.find(s => s.id === id);
+            if (item) openDetail(item);
+        };
+        ExpoLinking.getInitialURL().then(openFromUrl);
+        const sub = ExpoLinking.addEventListener('url', ({ url }) => openFromUrl(url));
+        return () => sub.remove();
+    }, [services]);
 
     const getEventTitle = useCallback(() => {
         switch (selectedEventType) {
@@ -756,18 +871,40 @@ const sendToTelegram = async (): Promise<boolean> => {
                         const inCart = cart.some(c => c.id === item.id);
                         return (
                             <View key={item.id} style={styles.card}>
-                                <View style={styles.imageContainer}>
-                                    <Image source={{ uri: item.img }} style={styles.cardImg} contentFit="cover" />
+                                <CardImageCarousel images={item.images} fallbackImg={item.img}>
                                     <View style={styles.ratingBadge}>
                                         <Feather name="star" size={11} color={Brand.gold} />
                                         <Text style={styles.cardRating}>{item.rating}</Text>
                                     </View>
+                                </CardImageCarousel>
+                                <View style={styles.cardActionRow}>
+                                    <TouchableOpacity onPress={() => handleShare(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                        <Feather name="send" size={18} color={Brand.textMuted} />
+                                    </TouchableOpacity>
                                 </View>
                                 <View style={styles.cardBody}>
                                     <Text style={styles.cardTitle}>{item.title}</Text>
                                     <View style={styles.tagRow}>
                                         {item.tags?.map((tTag, idx) => <View key={idx} style={styles.tagBadge}><Text style={styles.tagText}>{resolveTagLabel(tTag, lang)}</Text></View>)}
                                     </View>
+                                    {reviewSummaries[item.id] && (
+                                        <TouchableOpacity style={styles.reviewPreview} onPress={() => openDetail(item)}>
+                                            <View style={styles.reviewPreviewMeta}>
+                                                <Feather name="message-circle" size={13} color={Brand.textMuted} />
+                                                <Text style={styles.reviewPreviewCount}>{reviewSummaries[item.id].count}</Text>
+                                            </View>
+                                            <Text style={styles.reviewPreviewText} numberOfLines={1}>
+                                                <Text style={styles.reviewPreviewAuthor}>{reviewSummaries[item.id].latestAuthor}</Text>
+                                                {'  '}{reviewSummaries[item.id].latestComment}
+                                            </Text>
+                                            {reviewSummaries[item.id].latestLikes > 0 && (
+                                                <View style={styles.reviewPreviewMeta}>
+                                                    <Feather name="heart" size={11} color={Brand.danger} />
+                                                    <Text style={styles.reviewPreviewCount}>{reviewSummaries[item.id].latestLikes}</Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    )}
                                     <View style={styles.cardFooter}>
                                         <View>
                                             <Text style={styles.priceLabel}>{t.estPrice}</Text>
@@ -1110,13 +1247,22 @@ const styles = StyleSheet.create({
     filterBtnActive: { backgroundColor: '#D4AF37' },
     filterBtnText: { fontSize: 12, fontWeight: '600', color: '#2C2623' },
     card: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#EFECE6', marginBottom: 16, overflow: 'hidden' },
-    imageContainer: { height: 180, position: 'relative' },
+    imageContainer: { position: 'relative' },
     cardImg: { width: '100%', height: '100%' },
     ratingBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(44,38,35,0.85)', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 },
+    carouselDots: { position: 'absolute', bottom: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
+    carouselDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.5)' },
+    carouselDotActive: { backgroundColor: '#FFFFFF', width: 14 },
     cardRating: { color: '#D4AF37', fontSize: 12, fontWeight: '700' },
     cardBody: { padding: 14 },
     cardTitle: { fontSize: 16, fontWeight: '700', color: '#2C2623', marginBottom: 8 },
+    cardActionRow: { flexDirection: 'row', paddingHorizontal: 14, paddingTop: 10 },
     tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+    reviewPreview: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+    reviewPreviewMeta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+    reviewPreviewCount: { fontSize: 11, color: '#8A7E75', fontWeight: '600' },
+    reviewPreviewText: { flex: 1, fontSize: 12, color: '#6A625C' },
+    reviewPreviewAuthor: { fontWeight: '700', color: '#2C2623' },
     tagBadge: { backgroundColor: '#FAF8F5', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, borderWidth: 1, borderColor: '#EFECE6' },
     tagText: { fontSize: 11, color: '#8A7E75' },
     cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#FAF8F5' },
