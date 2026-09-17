@@ -393,17 +393,21 @@ const calculateDaysLeft = (targetDateStr: string): number => {
 
 function ImageWithLoader({ uri, width }: { uri: string; width: number }) {
     const [loading, setLoading] = useState(true);
+    const [failed, setFailed] = useState(false);
     return (
         <View style={{ width, aspectRatio: 4/5, borderRadius: 12, backgroundColor: '#EFECE6', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
-            {loading && (
+            {loading && !failed && (
                 <ActivityIndicator size="large" color="#D4AF37" style={{ position: 'absolute' }} />
             )}
-            <Image
-                source={{ uri }}
-                style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
-                onLoadEnd={() => setLoading(false)}
-            />
+            {!failed && (
+                <Image
+                    source={{ uri }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                    onLoadEnd={() => setLoading(false)}
+                    onError={() => { setLoading(false); setFailed(true); }}
+                />
+            )}
         </View>
     );
 }
@@ -414,7 +418,12 @@ function ImageWithLoader({ uri, width }: { uri: string; width: number }) {
 function CardImageCarousel({ images, fallbackImg, children }: { images?: string[]; fallbackImg: string; children?: React.ReactNode }) {
     const [containerWidth, setContainerWidth] = useState(0);
     const [activeIndex, setActiveIndex] = useState(0);
-    const list = images && images.length > 0 ? images : [fallbackImg];
+    // Some partner listings have image URLs that were never actually
+    // uploaded (e.g. an interrupted bulk upload) — drop those from view
+    // instead of showing a blank tile or retrying a failing request.
+    const [failedUris, setFailedUris] = useState<Set<string>>(new Set());
+    const candidates = images && images.length > 0 ? images : [fallbackImg];
+    const list = candidates.filter(uri => !failedUris.has(uri));
     const height = containerWidth * (5 / 4); // Instagram's 4:5 feed-photo ratio
 
     return (
@@ -431,8 +440,15 @@ function CardImageCarousel({ images, fallbackImg, children }: { images?: string[
                     }}
                 >
                     {list.map((uri, idx) => (
-                        <Image key={idx} source={{ uri }} style={{ width: containerWidth, height }} contentFit="cover" />
+                        <Image
+                            key={idx}
+                            source={{ uri }}
+                            style={{ width: containerWidth, height }}
+                            contentFit="cover"
+                            onError={() => setFailedUris(prev => new Set(prev).add(uri))}
+                        />
                     ))}
+                    {list.length === 0 && <View style={{ width: containerWidth, height, backgroundColor: '#EFECE6' }} />}
                 </ScrollView>
             )}
             {list.length > 1 && (
