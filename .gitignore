@@ -45,3 +45,9 @@ app-example
 
 .env.local
 google-service-account.json
+
+# add_partner.py admin tool
+_compressed/
+/photos/
+__pycache__/
+*.pyc
