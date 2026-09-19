@@ -19,7 +19,9 @@ Run with --dry-run first to preview without writing anything.
 import argparse
 import glob
 import os
+import re
 import sys
+import unicodedata
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -33,6 +35,15 @@ MAX_WIDTH = 1000
 JPEG_QUALITY_START = 80
 JPEG_QUALITY_MIN = 30
 TARGET_SIZE_KB = 75
+
+_AZ_MAP = str.maketrans("əƏşŞıİöÖüÜçÇğĞ", "eEsSiIoOuUcCgG")
+
+
+def slugify(text: str, keep: str = "") -> str:
+    """Supabase Storage rejects non-ASCII keys (ə, ş, ı ...), so folder and
+    file names are reduced to plain a-z0-9 (plus any chars in `keep`)."""
+    text = unicodedata.normalize("NFKD", text.translate(_AZ_MAP).lower())
+    return re.sub(rf"[^a-z0-9{re.escape(keep)}]", "", text)
 
 
 def parse_args():
@@ -201,7 +212,7 @@ def run_interactive():
             print(f"  Tapılmadı: {choice}")
 
     title = ask("Partnyorun adı (məs: Paris Hall)")
-    username = ask("Qısa ad (yalnız hərflər, boşluqsuz)", title.lower().replace(" ", ""))
+    username = ask("Qısa ad (yalnız hərflər, boşluqsuz)", slugify(title)[:30] or "partner")
     price = ask("Qiymət (AZN, tam ədəd)")
     while not price.isdigit():
         price = ask("Qiymət (rəqəmlə, məs: 2500)")
@@ -249,6 +260,11 @@ def create_service(args):
     if not photos:
         sys.exit(f"No .jpg/.png photos found in {args.photos_dir}")
 
+    safe_username = slugify(args.username)[:30] or "partner"
+    if safe_username != args.username:
+        print(f"Qeyd: qısa ad Storage üçün '{args.username}' -> '{safe_username}' kimi düzəldildi.")
+        args.username = safe_username
+
     event_types = [e.strip() for e in args.event_type.split(",") if e.strip()]
     for e in event_types:
         if e not in VALID_EVENT_TYPES:
@@ -275,16 +291,26 @@ def create_service(args):
     os.makedirs(tmp_dir, exist_ok=True)
 
     image_urls: list[str] = []
-    for src in photos:
-        compressed = compress_photo(src, tmp_dir)
-        storage_path = f"partners/{args.username}/{Path(compressed).name}"
-        with open(compressed, "rb") as f:
-            supabase.storage.from_("images").upload(
-                storage_path, f, {"content-type": "image/jpeg", "upsert": "true"}
-            )
-        public_url = supabase.storage.from_("images").get_public_url(storage_path)
-        image_urls.append(public_url)
-        print(f"  Uploaded: {storage_path}")
+    uploaded_paths: list[str] = []
+    try:
+        for i, src in enumerate(photos, 1):
+            compressed = compress_photo(src, tmp_dir)
+            safe_stem = slugify(Path(compressed).stem, keep="_-")[:40] or "photo"
+            storage_path = f"partners/{args.username}/{i}-{safe_stem}.jpg"
+            with open(compressed, "rb") as f:
+                supabase.storage.from_("images").upload(
+                    storage_path, f, {"content-type": "image/jpeg", "upsert": "true"}
+                )
+            uploaded_paths.append(storage_path)
+            image_urls.append(supabase.storage.from_("images").get_public_url(storage_path))
+            print(f"  Uploaded: {storage_path}")
+    except Exception as e:
+        if uploaded_paths:
+            try:
+                supabase.storage.from_("images").remove(uploaded_paths)
+            except Exception:
+                pass
+        sys.exit(f"\nYükləmə alınmadı, bazaya HEÇ NƏ yazılmadı ({e}).")
 
     row = {
         "title": args.title,
