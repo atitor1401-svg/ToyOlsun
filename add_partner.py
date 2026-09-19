@@ -36,20 +36,44 @@ TARGET_SIZE_KB = 75
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Add a partner service to ToyOlsun from local photos.")
-    p.add_argument("--username", required=True, help="Slug used for the storage folder, e.g. 'neon'")
-    p.add_argument("--title", required=True, help="Business name shown in the app")
-    p.add_argument("--price", required=True, type=int, help="Price (AZN, whole number — the DB column is integer)")
-    p.add_argument("--category", default="venues", choices=sorted(VALID_CATEGORIES))
-    p.add_argument("--event-type", default="wedding", help="Comma-separated: wedding,khyna,birthday")
-    p.add_argument("--photos-dir", required=True, help="Local folder containing the partner's photos")
-    p.add_argument("--description", default="")
-    p.add_argument("--address", default="Baku, Azerbaijan")
-    p.add_argument("--phone", default="")
-    p.add_argument("--unit", default="AZN")
-    p.add_argument("--tags", default="", help="Comma-separated tags")
+    p = argparse.ArgumentParser(description="Add or update a partner service in ToyOlsun from local photos.")
+    p.add_argument("--update-id", type=int, default=None,
+                    help="Update an existing service by id instead of creating a new one. "
+                         "Only the fields you pass are changed; --photos-dir is not required.")
+    p.add_argument("--username", help="Slug used for the storage folder, e.g. 'neon' (required when creating)")
+    p.add_argument("--title", help="Business name shown in the app (required when creating)")
+    p.add_argument("--price", type=int, help="Price (AZN, whole number — the DB column is integer)")
+    p.add_argument("--category", choices=sorted(VALID_CATEGORIES))
+    p.add_argument("--event-type", help="Comma-separated: wedding,khyna,birthday")
+    p.add_argument("--photos-dir", help="Local folder containing the partner's photos (required when creating)")
+    p.add_argument("--description")
+    p.add_argument("--address")
+    p.add_argument("--phone")
+    p.add_argument("--unit", default=None)
+    p.add_argument("--tags", help="Comma-separated tags")
     p.add_argument("--dry-run", action="store_true", help="Preview only, don't upload or insert anything")
-    return p.parse_args()
+    args = p.parse_args()
+
+    if args.update_id is None:
+        missing = [name for name, val in [("--username", args.username), ("--title", args.title),
+                                           ("--price", args.price), ("--photos-dir", args.photos_dir)] if not val]
+        if missing:
+            p.error(f"the following arguments are required unless --update-id is given: {', '.join(missing)}")
+        if args.category is None:
+            args.category = "venues"
+        if args.event_type is None:
+            args.event_type = "wedding"
+        if args.unit is None:
+            args.unit = "AZN"
+        if args.description is None:
+            args.description = ""
+        if args.address is None:
+            args.address = "Baku, Azerbaijan"
+        if args.phone is None:
+            args.phone = ""
+        if args.tags is None:
+            args.tags = ""
+    return args
 
 
 def collect_photos(photos_dir: str) -> list[str]:
@@ -82,8 +106,50 @@ def compress_photo(src_path: str, tmp_dir: str) -> str:
     return out_path
 
 
+def update_existing(args):
+    """Partial update of an existing row — only fields actually passed on
+    the command line are changed. Doesn't touch photos/images."""
+    fields = {
+        "title": args.title,
+        "price": args.price,
+        "unit": args.unit,
+        "category": args.category,
+        "description": args.description,
+        "address": args.address,
+        "phone": args.phone,
+    }
+    row = {k: v for k, v in fields.items() if v is not None}
+    if args.event_type is not None:
+        event_types = [e.strip() for e in args.event_type.split(",") if e.strip()]
+        for e in event_types:
+            if e not in VALID_EVENT_TYPES:
+                sys.exit(f"Invalid event type '{e}'. Must be one of: {sorted(VALID_EVENT_TYPES)}")
+        row["event_type"] = event_types
+    if args.tags is not None:
+        row["tags"] = [t.strip() for t in args.tags.split(",") if t.strip()]
+
+    if not row:
+        sys.exit("Nothing to update — pass at least one field (e.g. --tags).")
+
+    print(f"Updating service.id = {args.update_id} with: {row}")
+    if args.dry_run:
+        print("\n--dry-run: nothing was updated.")
+        return
+
+    load_dotenv()
+    supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+    result = supabase.table("service").update(row).eq("id", args.update_id).execute()
+    if not result.data:
+        sys.exit(f"No service found with id={args.update_id}")
+    print(f"\nDone. Updated service.id = {args.update_id}")
+
+
 def main():
     args = parse_args()
+
+    if args.update_id is not None:
+        update_existing(args)
+        return
 
     if not os.path.isdir(args.photos_dir):
         sys.exit(f"Photos folder not found: {args.photos_dir}")
