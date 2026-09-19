@@ -214,6 +214,7 @@ def run_interactive():
     category = cats[int(cat_choice) - 1] if cat_choice.isdigit() and 1 <= int(cat_choice) <= len(cats) else "venues"
 
     description = ask("Təsvir (istəyə bağlı, boş buraxa bilərsiniz)")
+    address = ask("Ünvan", "Baku, Azerbaijan")
     phone = ask("Telefon (istəyə bağlı, məs: +994 55 555 10 30)")
     tags = ask("Teqlər, vergüllə ayırın (istəyə bağlı, məs: premium,klassik)")
     event_type = ask("Tədbir növləri, vergüllə (wedding, khyna, birthday)", "wedding")
@@ -224,11 +225,12 @@ def run_interactive():
     a = Args()
     a.username, a.title, a.price = username, title, int(price)
     a.category, a.event_type, a.photos_dir = category, event_type, photos_dir
-    a.description, a.address, a.phone, a.unit, a.tags = description, "Baku, Azerbaijan", phone, "AZN", tags
+    a.description, a.address, a.phone, a.unit, a.tags = description, address, phone, "AZN", tags
     a.dry_run, a.update_id = False, None
 
     print(f"\n--- Yoxlayın ---")
     print(f"Ad: {title}   Qiymət: {price} AZN   Kateqoriya: {category}")
+    print(f"Ünvan: {address}")
     print(f"Şəkillər: {photos_dir}")
     confirm = ask("\nBunu ƏLAVƏ ETMƏK istəyirsiniz? (bəli/xeyr)", "bəli")
     if confirm.lower() not in ("bəli", "beli", "b", "yes", "y"):
