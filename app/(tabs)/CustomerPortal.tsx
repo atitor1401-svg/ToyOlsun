@@ -7,6 +7,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
 import { registerForPushNotificationsAsync, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
+import { AdBanner } from '@/components/AdBanner';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Feather } from '@expo/vector-icons';
@@ -388,6 +389,8 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
                     onPress={handleSubmit}
                     style={{ marginTop: 18 }}
                 />
+
+                <AdBanner />
             </ScrollView>
         </KeyboardAvoidingView>
     );

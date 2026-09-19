@@ -12,6 +12,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../lib/supabase';
 import { registerForPushNotificationsAsync, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
+import { AdBanner } from '@/components/AdBanner';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Feather } from '@expo/vector-icons';
@@ -594,40 +595,6 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
                 <AdBanner />
             </ScrollView>
         </KeyboardAvoidingView>
-    );
-}
-
-function AdBanner() {
-    const [banner, setBanner] = useState<{ id: string; image_url: string; link_url: string | null } | null>(null);
-
-    useEffect(() => {
-        let mounted = true;
-        supabase
-            .from('banners')
-            .select('id, image_url, link_url')
-            .eq('active', true)
-            .order('sort_order', { ascending: true })
-            .limit(1)
-            .then(({ data }) => {
-                if (mounted && data && data.length > 0) setBanner(data[0]);
-            });
-        return () => { mounted = false; };
-    }, []);
-
-    if (!banner) return null;
-
-    const content = (
-        <Image source={{ uri: banner.image_url }} style={styles.adBannerImage} resizeMode="cover" />
-    );
-
-    return (
-        <View style={styles.adBannerWrap}>
-            {banner.link_url ? (
-                <TouchableOpacity activeOpacity={0.85} onPress={() => Linking.openURL(banner.link_url!)}>
-                    {content}
-                </TouchableOpacity>
-            ) : content}
-        </View>
     );
 }
 
@@ -1263,8 +1230,6 @@ const styles = StyleSheet.create({
     authSwitchText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textAlign: 'center' },
     authSubtext: { fontSize: 13, color: '#6A625C', marginBottom: 16, lineHeight: 18 },
     authForgotText: { fontSize: 12, color: '#8A7E75', fontWeight: '600' },
-    adBannerWrap: { marginTop: 24, borderRadius: 14, overflow: 'hidden', backgroundColor: '#EFECE6' },
-    adBannerImage: { width: '100%', aspectRatio: 16 / 9 },
     partnerSuccessCheck: { fontSize: 40, color: '#D4AF37', fontWeight: '700', marginBottom: 10 },
     authModeSwitcher: { flexDirection: 'row', backgroundColor: '#EFECE6', borderRadius: 10, padding: 4, marginBottom: 10 },
     authModeTab: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
