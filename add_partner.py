@@ -144,13 +144,85 @@ def update_existing(args):
     print(f"\nDone. Updated service.id = {args.update_id}")
 
 
-def main():
-    args = parse_args()
+def find_desktop() -> str | None:
+    """Handles both a normal Desktop and a OneDrive-redirected one."""
+    home = Path.home()
+    for candidate in [home / "OneDrive" / "Desktop", home / "Desktop"]:
+        if candidate.is_dir():
+            return str(candidate)
+    return None
 
-    if args.update_id is not None:
-        update_existing(args)
+
+def ask(prompt: str, default: str = "") -> str:
+    suffix = f" [{default}]" if default else ""
+    val = input(f"{prompt}{suffix}: ").strip().lstrip("﻿")  # strip a stray BOM some terminals send
+    return val or default
+
+
+def run_interactive():
+    """No command-line arguments were given — ask everything step by step
+    instead, in Azerbaijani, so this can just be double-clicked."""
+    print("=== ToyOlsun — Yeni Partnyor Əlavə Et ===\n")
+
+    desktop = find_desktop()
+    photos_dir = ""
+    if desktop:
+        folders = sorted(d.name for d in Path(desktop).iterdir() if d.is_dir())
+        if folders:
+            print(f"Desktop-da tapılan qovluqlar ({desktop}):")
+            for i, name in enumerate(folders, 1):
+                print(f"  {i}. {name}")
+            choice = ask("\nHansı qovluqdakı şəkilləri yükləyək? (nömrə yazın, ya da tam yol yazın)")
+            if choice.isdigit() and 1 <= int(choice) <= len(folders):
+                photos_dir = str(Path(desktop) / folders[int(choice) - 1])
+            else:
+                photos_dir = choice
+    if not photos_dir:
+        photos_dir = ask("Şəkillərin olduğu qovluğun tam yolu")
+    while not os.path.isdir(photos_dir):
+        print(f"  Tapılmadı: {photos_dir}")
+        photos_dir = ask("Şəkillərin olduğu qovluğun tam yolu")
+
+    title = ask("Partnyorun adı (məs: Paris Hall)")
+    username = ask("Qısa ad (yalnız hərflər, boşluqsuz)", title.lower().replace(" ", ""))
+    price = ask("Qiymət (AZN, tam ədəd)")
+    while not price.isdigit():
+        price = ask("Qiymət (rəqəmlə, məs: 2500)")
+
+    print("\nKateqoriya seçin:")
+    cats = sorted(VALID_CATEGORIES)
+    for i, c in enumerate(cats, 1):
+        print(f"  {i}. {c}")
+    cat_choice = ask("Nömrə", "1")
+    category = cats[int(cat_choice) - 1] if cat_choice.isdigit() and 1 <= int(cat_choice) <= len(cats) else "venues"
+
+    description = ask("Təsvir (istəyə bağlı, boş buraxa bilərsiniz)")
+    phone = ask("Telefon (istəyə bağlı, məs: +994 55 555 10 30)")
+    tags = ask("Teqlər, vergüllə ayırın (istəyə bağlı, məs: premium,klassik)")
+    event_type = ask("Tədbir növləri, vergüllə (wedding, khyna, birthday)", "wedding")
+
+    class Args:
+        pass
+
+    a = Args()
+    a.username, a.title, a.price = username, title, int(price)
+    a.category, a.event_type, a.photos_dir = category, event_type, photos_dir
+    a.description, a.address, a.phone, a.unit, a.tags = description, "Baku, Azerbaijan", phone, "AZN", tags
+    a.dry_run, a.update_id = False, None
+
+    print(f"\n--- Yoxlayın ---")
+    print(f"Ad: {title}   Qiymət: {price} AZN   Kateqoriya: {category}")
+    print(f"Şəkillər: {photos_dir}")
+    confirm = ask("\nBunu ƏLAVƏ ETMƏK istəyirsiniz? (bəli/xeyr)", "bəli")
+    if confirm.lower() not in ("bəli", "beli", "b", "yes", "y"):
+        print("Ləğv edildi, heç nə yazılmadı.")
         return
 
+    print()
+    create_service(a)
+
+
+def create_service(args):
     if not os.path.isdir(args.photos_dir):
         sys.exit(f"Photos folder not found: {args.photos_dir}")
 
@@ -214,6 +286,20 @@ def main():
     result = supabase.table("service").insert(row).execute()
     new_id = result.data[0]["id"] if result.data else "?"
     print(f"\nDone. service.id = {new_id}")
+
+
+def main():
+    if len(sys.argv) == 1:
+        run_interactive()
+        return
+
+    args = parse_args()
+
+    if args.update_id is not None:
+        update_existing(args)
+        return
+
+    create_service(args)
 
 
 if __name__ == "__main__":
