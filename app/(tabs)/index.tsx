@@ -152,6 +152,7 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Müraciət Qəbul Edildi',
         modalSuccessDesc: 'AZN məbləğindəki smetanız fərdi menecerə göndərildi. Yarım saat ərzində sizinlə əlaqə saxlayacağıq.',
         partnerBtn: '+ Partnyor ol',
+        partnerContactHint: 'Partnyor olmaq üçün əlavə məlumat: +994 50 250 31 71',
         customerBtn: '+ Müştəri kimi Qeydiyyat / Giriş',
         myAccountBtn: '👤 Şəxsi Kabinetim',
         partnerFormTitle: 'Partnyor Qeydiyyatı',
@@ -224,6 +225,7 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Заявка принята',
         modalSuccessDesc: 'AZN отправлена персональному менеджеру. Мы свяжемся с вами в течение 30 минут.',
         partnerBtn: '+ Стать партнером',
+        partnerContactHint: 'Дополнительная информация для партнеров: +994 50 250 31 71',
         customerBtn: '+ Войти как клиент',
         myAccountBtn: '👤 Мой кабинет',
         partnerFormTitle: 'Регистрация партнера',
@@ -296,6 +298,7 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Request Received',
         modalSuccessDesc: 'AZN has been sent to your personal manager. We will contact you within 30 minutes.',
         partnerBtn: '+ Become a partner',
+        partnerContactHint: 'More info about becoming a partner: +994 50 250 31 71',
         customerBtn: '+ Sign in as Customer',
         myAccountBtn: '👤 My Account',
         partnerFormTitle: 'Partner Registration',
@@ -804,6 +807,9 @@ const sendToTelegram = async (): Promise<boolean> => {
                         <Text style={customerLoggedIn ? styles.myAccountBtnWelcomeText : styles.customerLinkWelcomeText}>{customerLoggedIn ? t.myAccountBtn : t.customerBtn}</Text>
                     </TouchableOpacity>
                 )}
+                {!partnerLoggedIn && (
+                    <Text style={styles.partnerContactHint}>{t.partnerContactHint}</Text>
+                )}
                 <PartnerPortal lang={lang} visible={showPartnerPortal} onClose={() => setShowPartnerPortal(false)} />
                 <CustomerPortal lang={lang} visible={showCustomerPortal} onClose={() => setShowCustomerPortal(false)} />
             </SafeAreaView>
@@ -1221,6 +1227,7 @@ const styles = StyleSheet.create({
     myAccountBtnWelcomeText: { fontSize: 13, color: '#D4AF37', fontWeight: '700' },
     customerLinkWelcome: { alignSelf: 'center', marginTop: 12, paddingVertical: 8, paddingHorizontal: 6 },
     customerLinkWelcomeText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textDecorationLine: 'underline' },
+    partnerContactHint: { alignSelf: 'center', marginTop: 10, fontSize: 11, color: '#B8AEA5', textAlign: 'center', paddingHorizontal: 12 },
     partnerFormSub: { fontSize: 12, color: '#8A7E75', marginBottom: 18, lineHeight: 17 },
     partnerLabel: { fontSize: 11, fontWeight: '700', color: '#6A625C', textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
     partnerInput: { backgroundColor: '#FAF8F5', borderWidth: 1, borderColor: '#EFECE6', borderRadius: 8, padding: 12, fontSize: 14, color: '#2C2623' },
