@@ -165,23 +165,40 @@ def run_interactive():
     print("=== ToyOlsun — Yeni Partnyor Əlavə Et ===\n")
 
     desktop = find_desktop()
-    photos_dir = ""
+
+    def resolve(raw: str) -> str | None:
+        """Accepts a list number, a full path, or just a folder name
+        (tried against the Desktop, since that's what most people type)."""
+        raw = raw.strip().strip('"')
+        if not raw:
+            return None
+        if raw.isdigit() and desktop:
+            folders = sorted(d.name for d in Path(desktop).iterdir() if d.is_dir())
+            idx = int(raw)
+            if 1 <= idx <= len(folders):
+                return str(Path(desktop) / folders[idx - 1])
+            return None
+        if os.path.isdir(raw):
+            return raw
+        if desktop and os.path.isdir(Path(desktop) / raw):
+            return str(Path(desktop) / raw)
+        return None
+
+    photos_dir = None
     if desktop:
         folders = sorted(d.name for d in Path(desktop).iterdir() if d.is_dir())
         if folders:
             print(f"Desktop-da tapılan qovluqlar ({desktop}):")
             for i, name in enumerate(folders, 1):
                 print(f"  {i}. {name}")
-            choice = ask("\nHansı qovluqdakı şəkilləri yükləyək? (nömrə yazın, ya da tam yol yazın)")
-            if choice.isdigit() and 1 <= int(choice) <= len(folders):
-                photos_dir = str(Path(desktop) / folders[int(choice) - 1])
-            else:
-                photos_dir = choice
-    if not photos_dir:
-        photos_dir = ask("Şəkillərin olduğu qovluğun tam yolu")
-    while not os.path.isdir(photos_dir):
-        print(f"  Tapılmadı: {photos_dir}")
-        photos_dir = ask("Şəkillərin olduğu qovluğun tam yolu")
+            choice = ask("\nHansı qovluqdakı şəkilləri yükləyək? (nömrə, qovluq adı, ya da tam yol yazın)")
+            photos_dir = resolve(choice)
+
+    while not photos_dir:
+        choice = ask("Şəkillərin olduğu qovluğun adı (Desktop-dadırsa) və ya tam yolu")
+        photos_dir = resolve(choice)
+        if not photos_dir:
+            print(f"  Tapılmadı: {choice}")
 
     title = ask("Partnyorun adı (məs: Paris Hall)")
     username = ask("Qısa ad (yalnız hərflər, boşluqsuz)", title.lower().replace(" ", ""))
