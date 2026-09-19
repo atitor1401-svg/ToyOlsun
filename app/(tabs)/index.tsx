@@ -152,7 +152,7 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Müraciət Qəbul Edildi',
         modalSuccessDesc: 'AZN məbləğindəki smetanız fərdi menecerə göndərildi. Yarım saat ərzində sizinlə əlaqə saxlayacağıq.',
         partnerBtn: '+ Partnyor ol',
-        partnerContactHint: 'Partnyor olmaq üçün əlavə məlumat: +994 50 250 31 71',
+        partnerContactHint: 'Partnyor olmaq üçün əlavə məlumat: +994 50 250 31 71',
         customerBtn: '+ Müştəri kimi Qeydiyyat / Giriş',
         myAccountBtn: '👤 Şəxsi Kabinetim',
         partnerFormTitle: 'Partnyor Qeydiyyatı',
@@ -225,7 +225,7 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Заявка принята',
         modalSuccessDesc: 'AZN отправлена персональному менеджеру. Мы свяжемся с вами в течение 30 минут.',
         partnerBtn: '+ Стать партнером',
-        partnerContactHint: 'Дополнительная информация для партнеров: +994 50 250 31 71',
+        partnerContactHint: 'Для партнеров, подробности: +994 50 250 31 71',
         customerBtn: '+ Войти как клиент',
         myAccountBtn: '👤 Мой кабинет',
         partnerFormTitle: 'Регистрация партнера',
@@ -298,7 +298,7 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Request Received',
         modalSuccessDesc: 'AZN has been sent to your personal manager. We will contact you within 30 minutes.',
         partnerBtn: '+ Become a partner',
-        partnerContactHint: 'More info about becoming a partner: +994 50 250 31 71',
+        partnerContactHint: 'More info about becoming a partner: +994 50 250 31 71',
         customerBtn: '+ Sign in as Customer',
         myAccountBtn: '👤 My Account',
         partnerFormTitle: 'Partner Registration',
@@ -808,7 +808,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                     </TouchableOpacity>
                 )}
                 {!partnerLoggedIn && (
-                    <Text style={styles.partnerContactHint}>{t.partnerContactHint}</Text>
+                    <Text style={styles.partnerContactHint} maxFontSizeMultiplier={1.15}>{t.partnerContactHint}</Text>
                 )}
                 <PartnerPortal lang={lang} visible={showPartnerPortal} onClose={() => setShowPartnerPortal(false)} />
                 <CustomerPortal lang={lang} visible={showCustomerPortal} onClose={() => setShowCustomerPortal(false)} />
