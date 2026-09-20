@@ -51,6 +51,7 @@ export interface ServiceItem {
     images?: string[];
     telegram_chat_id?: string;
     owner_id?: string;
+    promo_active?: boolean;
 }
 
 interface ReviewSummary {
@@ -153,6 +154,10 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Müraciət Qəbul Edildi',
         modalSuccessDesc: 'AZN məbləğindəki smetanız fərdi menecerə göndərildi. Yarım saat ərzində sizinlə əlaqə saxlayacağıq.',
         partnerBtn: '+ Partnyor ol',
+        promoBadge: 'Promo −5%', promoTitle: 'Promo kod', promoPlaceholder: 'Promo kodu yazın', promoApply: 'Tətbiq et',
+        promoApplied: 'Promo tətbiq olundu', promoInvalid: 'Promo kod etibarsızdır', promoRemove: 'Ləğv et',
+        promoOnlyMarked: 'Endirim yalnız "Promo" nişanlı xidmətlərə tətbiq olunur.',
+        promoNoEligible: 'Səbətdəki xidmətlər promo-da iştirak etmir.', promoSaved: 'Endirim',
         partnerContactHint: 'Partnyor olmaq üçün əlavə məlumat: +994 50 250 31 71',
         customerBtn: '+ Müştəri kimi Qeydiyyat / Giriş',
         myAccountBtn: '👤 Şəxsi Kabinetim',
@@ -226,6 +231,10 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Заявка принята',
         modalSuccessDesc: 'AZN отправлена персональному менеджеру. Мы свяжемся с вами в течение 30 минут.',
         partnerBtn: '+ Стать партнером',
+        promoBadge: 'Промо −5%', promoTitle: 'Промокод', promoPlaceholder: 'Введите промокод', promoApply: 'Применить',
+        promoApplied: 'Промокод применён', promoInvalid: 'Промокод недействителен', promoRemove: 'Отменить',
+        promoOnlyMarked: 'Скидка действует только на услуги с меткой «Промо».',
+        promoNoEligible: 'Услуги в корзине не участвуют в промо.', promoSaved: 'Скидка',
         partnerContactHint: 'Для партнеров, подробности: +994 50 250 31 71',
         customerBtn: '+ Войти как клиент',
         myAccountBtn: '👤 Мой кабинет',
@@ -299,6 +308,10 @@ const TRANSLATIONS = {
         modalSuccessTitle: 'Request Received',
         modalSuccessDesc: 'AZN has been sent to your personal manager. We will contact you within 30 minutes.',
         partnerBtn: '+ Become a partner',
+        promoBadge: 'Promo −5%', promoTitle: 'Promo code', promoPlaceholder: 'Enter promo code', promoApply: 'Apply',
+        promoApplied: 'Promo applied', promoInvalid: 'Invalid promo code', promoRemove: 'Remove',
+        promoOnlyMarked: 'The discount applies only to services marked "Promo".',
+        promoNoEligible: 'None of the services in your cart take part in the promo.', promoSaved: 'Discount',
         partnerContactHint: 'More info about becoming a partner: +994 50 250 31 71',
         customerBtn: '+ Sign in as Customer',
         myAccountBtn: '👤 My Account',
@@ -639,10 +652,46 @@ const { data, error } = await Promise.race([
     }, [eventDate]);
 
     const parsedGuests = useMemo(() => { const val = parseInt(guests, 10); return isNaN(val) || val < 0 ? 0 : val; }, [guests]);
-    const totalEstimate = useMemo(() => cart.reduce((sum, item) => {
-        if (item.category === 'venues') return sum + (item.price * parsedGuests);
-        return sum + item.price;
-    }, 0), [cart, parsedGuests]);
+    const [promoInput, setPromoInput] = useState('');
+    const [appliedPromo, setAppliedPromo] = useState<{ code: string; percent: number } | null>(null);
+    const [promoError, setPromoError] = useState(false);
+    const [promoChecking, setPromoChecking] = useState(false);
+
+    // The discount only applies to services whose partner switched the promo on.
+    const promoPercentFor = (item: ServiceItem) => (appliedPromo && item.promo_active ? appliedPromo.percent : 0);
+    const lineBase = (item: ServiceItem) => (item.category === 'venues' ? item.price * parsedGuests : item.price);
+    const lineFinal = (item: ServiceItem) => {
+        const p = promoPercentFor(item);
+        return p ? Math.round(lineBase(item) * (100 - p) / 100) : lineBase(item);
+    };
+    const totalEstimate = cart.reduce((sum, item) => sum + lineFinal(item), 0);
+    const promoSavings = cart.reduce((sum, item) => sum + (lineBase(item) - lineFinal(item)), 0);
+    const cartEligibleCount = cart.filter(item => item.promo_active).length;
+
+    const applyPromo = async () => {
+        const code = promoInput.trim();
+        if (!code || promoChecking) return;
+        setPromoChecking(true);
+        setPromoError(false);
+        try {
+            const { data, error } = await supabase.rpc('validate_promo', { p_code: code });
+            const percent = typeof data === 'number' ? data : 0;
+            if (!error && percent > 0) {
+                setAppliedPromo({ code: code.toUpperCase(), percent });
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } else {
+                setAppliedPromo(null);
+                setPromoError(true);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            }
+        } catch {
+            setAppliedPromo(null);
+            setPromoError(true);
+        } finally {
+            setPromoChecking(false);
+        }
+    };
+    const removePromo = () => { setAppliedPromo(null); setPromoInput(''); setPromoError(false); };
 
     const [submitting, setSubmitting] = useState(false);
 
@@ -659,13 +708,15 @@ const sendToTelegram = async (): Promise<boolean> => {
                 eventDate: formattedDate,
                 guests: parsedGuests,
                 cart: cart.map(item => ({
+                    id: item.id,
                     title: item.title,
                     category: item.category,
                     price: item.price,
                     telegram_chat_id: item.telegram_chat_id,
                 })),
                 totalEstimate,
-                lang
+                lang,
+                promoCode: appliedPromo?.code,
             });
         } catch (e) {
             console.error('Order submission (Telegram) error:', e);
@@ -676,7 +727,8 @@ const sendToTelegram = async (): Promise<boolean> => {
         let orderOk = false;
         try {
             const orderRows = cart.map(item => {
-                const itemPrice = item.category === 'venues' ? item.price * parsedGuests : item.price;
+                const itemPrice = lineFinal(item);
+                const itemPromo = promoPercentFor(item);
                                 return {
                     service_id: item.id,
                     service_owner_id: item.owner_id || null,
@@ -689,6 +741,8 @@ const sendToTelegram = async (): Promise<boolean> => {
                     status: 'new',
                     lang,
                     customer_id: currentUserId,
+                    promo_code: itemPromo ? appliedPromo!.code : null,
+                    discount_percent: itemPromo,
                 };
             });
             if (orderRows.length > 0) {
@@ -917,6 +971,12 @@ const sendToTelegram = async (): Promise<boolean> => {
                                         <Feather name="star" size={11} color={Brand.gold} />
                                         <Text style={styles.cardRating}>{item.rating}</Text>
                                     </View>
+                                    {item.promo_active && (
+                                        <View style={styles.promoBadge} pointerEvents="none">
+                                            <Feather name="tag" size={11} color="#2C2623" />
+                                            <Text style={styles.promoBadgeText} maxFontSizeMultiplier={1.1}>{t.promoBadge}</Text>
+                                        </View>
+                                    )}
                                 </CardImageCarousel>
                                 <View style={styles.cardActionRow}>
                                     <TouchableOpacity onPress={() => handleShare(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -982,12 +1042,14 @@ const sendToTelegram = async (): Promise<boolean> => {
                     ) : (
                         <>
                             {cart.map(item => {
-                                const itemTotal = item.category === 'venues' ? item.price * parsedGuests : item.price;
+                                const itemTotal = lineFinal(item);
+                                const itemPromo = promoPercentFor(item);
                                 return (
                                     <View key={item.id} style={styles.cartItem}>
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.cartItemTitle}>{item.title}</Text>
                                             <Text style={styles.cartItemSub}>{item.category === 'venues' ? `${item.price} AZN × ${parsedGuests} ${t.guestUnit}` : item.unit}</Text>
+                                            {itemPromo > 0 && <Text style={styles.cartItemPromo}>{appliedPromo?.code} −{itemPromo}%</Text>}
                                         </View>
                                         <Text style={styles.cartItemPrice}>{formatCurrency(itemTotal)} AZN</Text>
                                         <IconButton icon="x" size={28} onPress={() => toggleCart(item)} style={styles.removeBtn} />
@@ -1000,7 +1062,41 @@ const sendToTelegram = async (): Promise<boolean> => {
                                     onChangeText={(text) => { if (!text.startsWith('+994 ')) setPhone('+994 '); else setPhone(text); }} />
                                 <TextInput style={styles.phoneInput} placeholder="Ad və Soyad" placeholderTextColor="#A0968E" value={fullName} onChangeText={setFullName} />
                             </View>
-                            <TouchableOpacity 
+                            <View style={[styles.contactCard, { marginTop: 0 }]}>
+                                <Text style={styles.contactHeader}>{t.promoTitle}</Text>
+                                {appliedPromo ? (
+                                    <>
+                                        <View style={styles.promoAppliedRow}>
+                                            <Feather name="check-circle" size={16} color={Brand.success} />
+                                            <Text style={styles.promoAppliedText}>{t.promoApplied}: {appliedPromo.code} (−{appliedPromo.percent}%)</Text>
+                                            <TouchableOpacity onPress={removePromo} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                                <Text style={styles.promoRemoveText}>{t.promoRemove}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <Text style={styles.promoHint}>
+                                            {cartEligibleCount === 0 ? t.promoNoEligible : cartEligibleCount < cart.length ? t.promoOnlyMarked : ''}
+                                        </Text>
+                                    </>
+                                ) : (
+                                    <>
+                                        <View style={styles.promoInputRow}>
+                                            <TextInput
+                                                style={[styles.phoneInput, { flex: 1 }]}
+                                                placeholder={t.promoPlaceholder}
+                                                placeholderTextColor="#A0968E"
+                                                autoCapitalize="characters"
+                                                autoCorrect={false}
+                                                value={promoInput}
+                                                onChangeText={(v) => { setPromoInput(v); if (promoError) setPromoError(false); }}
+                                                onSubmitEditing={applyPromo}
+                                            />
+                                            <Button label={t.promoApply} variant="primary" size="sm" loading={promoChecking} onPress={applyPromo} />
+                                        </View>
+                                        {promoError && <Text style={styles.promoErrorText}>{t.promoInvalid}</Text>}
+                                    </>
+                                )}
+                            </View>
+                            <TouchableOpacity
                                 style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 4 }}
                                 onPress={() => setPrivacyAccepted(!privacyAccepted)}
                                 activeOpacity={0.7}
@@ -1026,6 +1122,9 @@ const sendToTelegram = async (): Promise<boolean> => {
                             <View style={styles.totalCard}>
                                 <Text style={styles.totalTitle}>{t.totalEstimate}</Text>
                                 <Text style={styles.totalAmount}>{formatCurrency(totalEstimate)} AZN</Text>
+                                {promoSavings > 0 && (
+                                    <Text style={styles.totalSavings}>{t.promoSaved}: −{formatCurrency(promoSavings)} AZN</Text>
+                                )}
                                 <Button
                                     label={t.sendManager}
                                     variant="gold"
@@ -1324,6 +1423,16 @@ const styles = StyleSheet.create({
     cartItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#EFECE6', marginBottom: 10 },
     cartItemTitle: { fontSize: 14, fontWeight: '700', color: '#2C2623' },
     cartItemSub: { fontSize: 12, color: '#8A7E75', marginTop: 2 },
+    cartItemPromo: { fontSize: 11, fontWeight: '700', color: '#8A6D1F', marginTop: 2 },
+    promoBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#D4AF37', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 },
+    promoBadgeText: { fontSize: 11, fontWeight: '700', color: '#2C2623' },
+    promoInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    promoAppliedRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    promoAppliedText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#2F7D5C' },
+    promoRemoveText: { fontSize: 12, color: '#8A7E75', textDecorationLine: 'underline' },
+    promoHint: { fontSize: 11, color: '#8A7E75', marginTop: 6 },
+    promoErrorText: { fontSize: 12, color: '#B0392C', marginTop: 6 },
+    totalSavings: { color: '#D4AF37', fontSize: 12, fontWeight: '600', marginBottom: 6 },
     cartItemPrice: { fontSize: 14, fontWeight: '700', color: '#2C2623', marginRight: 12 },
     removeBtn: { padding: 4 },
     contactCard: { backgroundColor: '#FFF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#EFECE6', marginTop: 10, marginBottom: 16 },

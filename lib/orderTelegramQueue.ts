@@ -3,9 +3,10 @@ export interface OrderTelegramPayload {
     phone: string;
     eventDate: string;
     guests: number;
-    cart: { title: string; category: string; price: number; telegram_chat_id?: string }[];
+    cart: { id?: string | number; title: string; category: string; price: number; telegram_chat_id?: string }[];
     totalEstimate: number;
     lang: string;
+    promoCode?: string;
 }
 
 interface QueueItem {

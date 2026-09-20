@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     StyleSheet, Text, View, TextInput, TouchableOpacity,
     ScrollView, Image, Modal, Platform, ActivityIndicator,
-    KeyboardAvoidingView, Alert, Linking,
+    KeyboardAvoidingView, Alert, Linking, Switch,
 } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -89,6 +89,7 @@ const PORTAL_TEXT = {
         noOrdersSub: 'Xidmətiniz təsdiqləndikdən sonra müştəri müraciətləri burada görünəcək',
         orderNew: 'Yeni', orderSeen: 'Baxıldı', orderContacted: 'Əlaqə saxlanıldı', orderCompleted: 'Tamamlandı',
         orderGuests: 'qonaq', orderMarkContacted: 'Əlaqə saxlanıldı işarələ', orderCustomer: 'Müştəri',
+        promoLabel: 'Promo 5% endirim', orderPromo: 'Promo',
         addNew: '+ Yeni xidmət əlavə et', edit: 'Redaktə et', delete: 'Sil', save: 'SAXLA',
         cancel: 'Ləğv et', deleteConfirmTitle: 'Silinsin?', deleteConfirmMsg: 'Bu xidməti silmək istədiyinizə əminsiniz? Bu geri qaytarıla bilməz.',
         deleteConfirmYes: 'Bəli, sil', deleteConfirmNo: 'Xeyr', statusPending: 'Gözləyir', statusApproved: 'Təsdiqləndi', statusRejected: 'Rədd edildi',
@@ -126,6 +127,7 @@ const PORTAL_TEXT = {
         noOrdersSub: 'После одобрения услуги здесь появятся заявки клиентов',
         orderNew: 'Новая', orderSeen: 'Просмотрено', orderContacted: 'Связались', orderCompleted: 'Завершено',
         orderGuests: 'гостей', orderMarkContacted: 'Отметить как связались', orderCustomer: 'Клиент',
+        promoLabel: 'Промо: скидка 5%', orderPromo: 'Промо',
         addNew: '+ Добавить новую услугу', edit: 'Редактировать', delete: 'Удалить', save: 'СОХРАНИТЬ',
         cancel: 'Отмена', deleteConfirmTitle: 'Удалить?', deleteConfirmMsg: 'Вы уверены, что хотите удалить эту услугу? Это нельзя отменить.',
         deleteConfirmYes: 'Да, удалить', deleteConfirmNo: 'Нет', statusPending: 'На проверке', statusApproved: 'Одобрено', statusRejected: 'Отклонено',
@@ -163,6 +165,7 @@ const PORTAL_TEXT = {
         noOrdersSub: 'Once your service is approved, customer orders will appear here',
         orderNew: 'New', orderSeen: 'Seen', orderContacted: 'Contacted', orderCompleted: 'Completed',
         orderGuests: 'guests', orderMarkContacted: 'Mark as contacted', orderCustomer: 'Customer',
+        promoLabel: 'Promo 5% discount', orderPromo: 'Promo',
         addNew: '+ Add new service', edit: 'Edit', delete: 'Delete', save: 'SAVE',
         cancel: 'Cancel', deleteConfirmTitle: 'Delete?', deleteConfirmMsg: 'Are you sure you want to delete this service? This cannot be undone.',
         deleteConfirmYes: 'Yes, delete', deleteConfirmNo: 'No', statusPending: 'Pending', statusApproved: 'Approved', statusRejected: 'Rejected',
@@ -210,6 +213,7 @@ interface PartnerService {
     event_type: EventType[];
     status: 'pending' | 'approved' | 'rejected';
     owner_id: string;
+    promo_active?: boolean;
 }
 
 interface PartnerOrder {
@@ -222,6 +226,8 @@ interface PartnerOrder {
     guests_count: number;
     item_price: number;
     status: 'new' | 'seen' | 'contacted' | 'completed';
+    promo_code?: string | null;
+    discount_percent?: number;
 }
 
 const slugify = (input: string) => {
@@ -938,6 +944,17 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
         }
     };
 
+    const togglePromo = async (service: PartnerService, next: boolean) => {
+        setServices(prev => prev.map(s => s.id === service.id ? { ...s, promo_active: next } : s));
+        const { data, error } = await supabase.from('service').update({ promo_active: next }).eq('id', service.id).select('id');
+        if (error || !data || data.length === 0) {
+            setServices(prev => prev.map(s => s.id === service.id ? { ...s, promo_active: !next } : s));
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        } else {
+            Haptics.selectionAsync();
+        }
+    };
+
     const handleDelete = async () => {
         if (!deleteTarget) return;
         const { error } = await supabase.from('service').delete().eq('id', deleteTarget.id);
@@ -1070,6 +1087,16 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                                         </View>
                                     </View>
                                     <Text style={styles.dashCardPrice}>{s.price} {s.unit}</Text>
+                                    <View style={styles.promoRow}>
+                                        <Feather name="tag" size={13} color={Brand.textMuted} />
+                                        <Text style={styles.promoRowLabel}>{t.promoLabel}</Text>
+                                        <Switch
+                                            value={!!s.promo_active}
+                                            onValueChange={(v) => togglePromo(s, v)}
+                                            trackColor={{ false: '#D8D2C8', true: '#D4AF37' }}
+                                            thumbColor="#FFFFFF"
+                                        />
+                                    </View>
                                     <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                                         <Button label={t.edit} variant="primary" size="sm" onPress={() => setEditing(s)} />
                                         <Button label={t.delete} variant="danger" size="sm" onPress={() => setDeleteTarget(s)} />
@@ -1115,6 +1142,9 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                                     <Text style={styles.orderDetail}>{o.event_date} · {o.guests_count} {t.orderGuests}</Text>
                                 </View>
                                 <Text style={styles.orderPrice}>{o.item_price} AZN</Text>
+                                {!!o.promo_code && !!o.discount_percent && (
+                                    <Text style={styles.orderPromoTag}>{t.orderPromo}: {o.promo_code} (−{o.discount_percent}%)</Text>
+                                )}
                                 {o.status === 'new' && (
                                     <Button label={t.orderMarkContacted} variant="primary" size="sm" fullWidth onPress={() => markOrderContacted(o.id)} style={{ marginTop: 10 }} />
                                 )}
@@ -1271,6 +1301,9 @@ const styles = StyleSheet.create({
     dashCardImg: { width: 90, height: 110 },
     dashCardTitle: { fontSize: 14, fontWeight: '700', color: '#2C2623', flex: 1, marginRight: 8 },
     dashCardPrice: { fontSize: 12, color: '#8A7E75', marginTop: 4 },
+    promoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+    promoRowLabel: { flex: 1, fontSize: 12, fontWeight: '600', color: '#6A625C' },
+    orderPromoTag: { fontSize: 12, fontWeight: '600', color: '#8A6D1F', marginTop: 4 },
     statusBadge: { backgroundColor: '#F0E4C0', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 },
     statusBadgeApproved: { backgroundColor: '#DCEEDC' },
     statusBadgeRejected: { backgroundColor: '#F5DCD9' },
