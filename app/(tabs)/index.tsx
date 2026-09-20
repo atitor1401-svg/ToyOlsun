@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import * as ExpoLinking from 'expo-linking';
 import { supabase } from '../../lib/supabase';
 import { registerPushTokenForUser } from '../../lib/notifications';
+import { sendOrderToTelegram, flushPendingOrderTelegrams } from '../../lib/orderTelegram';
 import { useWindowDimensions, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -555,6 +556,16 @@ export default function LuxuryApp() {
         return () => { listener.subscription.unsubscribe(); };
     }, []);
 
+    // Re-sends any order notification that failed earlier (e.g. no signal at
+    // checkout) when the app opens or comes back to the foreground.
+    useEffect(() => {
+        flushPendingOrderTelegrams();
+        const sub = AppState.addEventListener('change', (state) => {
+            if (state === 'active') flushPendingOrderTelegrams();
+        });
+        return () => sub.remove();
+    }, []);
+
     useEffect(() => {
     async function fetchServices() {
         try {
@@ -642,19 +653,20 @@ const sendToTelegram = async (): Promise<boolean> => {
         const { data: userData } = await supabase.auth.getUser();
         const currentUserId = userData?.user?.id || null;
         try {
-            const { data, error } = await supabase.functions.invoke('submit-order', {
-                body: {
-                    fullName,
-                    phone,
-                    eventDate: formattedDate,
-                    guests: parsedGuests,
-                    cart,
-                    totalEstimate,
-                    lang
-                }
+            telegramOk = await sendOrderToTelegram({
+                fullName,
+                phone,
+                eventDate: formattedDate,
+                guests: parsedGuests,
+                cart: cart.map(item => ({
+                    title: item.title,
+                    category: item.category,
+                    price: item.price,
+                    telegram_chat_id: item.telegram_chat_id,
+                })),
+                totalEstimate,
+                lang
             });
-            if (error) throw error;
-            telegramOk = true;
         } catch (e) {
             console.error('Order submission (Telegram) error:', e);
         }
