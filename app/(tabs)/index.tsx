@@ -658,44 +658,74 @@ const { data, error } = await Promise.race([
     const [promoChecking, setPromoChecking] = useState(false);
 
     // The discount only applies to services whose partner switched the promo on.
-    const promoPercentFor = (item: ServiceItem) => (appliedPromo && item.promo_active ? appliedPromo.percent : 0);
+    type PromoState = { code: string; percent: number };
+    const promoPercentFor = (item: ServiceItem, promo: PromoState | null = appliedPromo) => (promo && item.promo_active ? promo.percent : 0);
     const lineBase = (item: ServiceItem) => (item.category === 'venues' ? item.price * parsedGuests : item.price);
-    const lineFinal = (item: ServiceItem) => {
-        const p = promoPercentFor(item);
+    const lineFinal = (item: ServiceItem, promo: PromoState | null = appliedPromo) => {
+        const p = promoPercentFor(item, promo);
         return p ? Math.round(lineBase(item) * (100 - p) / 100) : lineBase(item);
     };
     const totalEstimate = cart.reduce((sum, item) => sum + lineFinal(item), 0);
     const promoSavings = cart.reduce((sum, item) => sum + (lineBase(item) - lineFinal(item)), 0);
     const cartEligibleCount = cart.filter(item => item.promo_active).length;
 
-    const applyPromo = async () => {
-        const code = promoInput.trim();
-        if (!code || promoChecking) return;
+    // Validates a code on the server; on success it becomes the applied promo.
+    const checkPromo = async (raw: string): Promise<PromoState | null> => {
+        const code = raw.trim();
+        if (!code) return null;
         setPromoChecking(true);
         setPromoError(false);
         try {
             const { data, error } = await supabase.rpc('validate_promo', { p_code: code });
             const percent = typeof data === 'number' ? data : 0;
             if (!error && percent > 0) {
-                setAppliedPromo({ code: code.toUpperCase(), percent });
+                const promo = { code: code.toUpperCase(), percent };
+                setAppliedPromo(promo);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } else {
-                setAppliedPromo(null);
-                setPromoError(true);
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                return promo;
             }
         } catch {
-            setAppliedPromo(null);
-            setPromoError(true);
+            // falls through to the invalid state below
         } finally {
             setPromoChecking(false);
         }
+        setAppliedPromo(null);
+        setPromoError(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        return null;
+    };
+
+    // The cart holds copies of services loaded when the app opened; re-read
+    // which of them currently have the promo switched on.
+    const refreshCartPromoFlags = async (): Promise<ServiceItem[]> => {
+        const current = cart;
+        if (current.length === 0) return current;
+        try {
+            const { data, error } = await supabase.from('service').select('id, promo_active').in('id', current.map(i => i.id));
+            if (error || !data) return current;
+            const flags = new Map<string, boolean>(data.map((r: any) => [String(r.id), !!r.promo_active]));
+            const withFlag = (i: ServiceItem) => (flags.has(String(i.id)) ? { ...i, promo_active: flags.get(String(i.id)) } : i);
+            setCart(prev => prev.map(withFlag));
+            return current.map(withFlag);
+        } catch {
+            return current;
+        }
+    };
+
+    const applyPromo = async () => {
+        if (promoChecking) return;
+        const promo = await checkPromo(promoInput);
+        if (promo) await refreshCartPromoFlags();
     };
     const removePromo = () => { setAppliedPromo(null); setPromoInput(''); setPromoError(false); };
 
+    useEffect(() => {
+        if (activeTab === 'cart') refreshCartPromoFlags();
+    }, [activeTab]);
+
     const [submitting, setSubmitting] = useState(false);
 
-const sendToTelegram = async (): Promise<boolean> => {
+const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): Promise<boolean> => {
         if (submitting) return false;
         setSubmitting(true);
         let telegramOk = false;
@@ -707,16 +737,16 @@ const sendToTelegram = async (): Promise<boolean> => {
                 phone,
                 eventDate: formattedDate,
                 guests: parsedGuests,
-                cart: cart.map(item => ({
+                cart: items.map(item => ({
                     id: item.id,
                     title: item.title,
                     category: item.category,
                     price: item.price,
                     telegram_chat_id: item.telegram_chat_id,
                 })),
-                totalEstimate,
+                totalEstimate: items.reduce((sum, item) => sum + lineFinal(item, promo), 0),
                 lang,
-                promoCode: appliedPromo?.code,
+                promoCode: promo?.code,
             });
         } catch (e) {
             console.error('Order submission (Telegram) error:', e);
@@ -726,9 +756,9 @@ const sendToTelegram = async (): Promise<boolean> => {
         // (independent of whether the Telegram function succeeded)
         let orderOk = false;
         try {
-            const orderRows = cart.map(item => {
-                const itemPrice = lineFinal(item);
-                const itemPromo = promoPercentFor(item);
+            const orderRows = items.map(item => {
+                const itemPrice = lineFinal(item, promo);
+                const itemPromo = promoPercentFor(item, promo);
                                 return {
                     service_id: item.id,
                     service_owner_id: item.owner_id || null,
@@ -741,7 +771,7 @@ const sendToTelegram = async (): Promise<boolean> => {
                     status: 'new',
                     lang,
                     customer_id: currentUserId,
-                    promo_code: itemPromo ? appliedPromo!.code : null,
+                    promo_code: itemPromo ? promo!.code : null,
                     discount_percent: itemPromo,
                 };
             });
@@ -1135,8 +1165,16 @@ const sendToTelegram = async (): Promise<boolean> => {
                                         if (!fullName.trim() || phone.trim() === '+994' || !privacyAccepted) {
                                             return;
                                         }
+                                        if (submitting || promoChecking) return;
                                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                        const success = await sendToTelegram();
+                                        const items = await refreshCartPromoFlags();
+                                        let promo = appliedPromo;
+                                        // A code that was typed but never confirmed with "Apply" is applied now.
+                                        if (!promo && promoInput.trim()) {
+                                            promo = await checkPromo(promoInput);
+                                            if (!promo) return; // invalid code: the error is shown, nothing is sent
+                                        }
+                                        const success = await sendToTelegram(promo, items);
                                         if (success) {
                                             setCheckoutModalVisible(true);
                                         }
