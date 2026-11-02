@@ -51,3 +51,6 @@ _compressed/
 /photos/
 __pycache__/
 *.pyc
+
+# Firebase Android config (uploaded to EAS as the GOOGLE_SERVICES_JSON file variable)
+google-services.json

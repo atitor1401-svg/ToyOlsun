@@ -1,6 +1,13 @@
-// Everything lives in app.json; this file only injects the Meta client token
-// from the environment (local .env, or an EAS environment variable for
-// cloud builds) so it is not committed to git.
+// Everything lives in app.json; this file only injects values that must not be
+// committed to git, from the environment (local .env, or EAS environment
+// variables for cloud builds):
+//   META_CLIENT_TOKEN     - Meta (Facebook) SDK client token
+//   GOOGLE_SERVICES_JSON  - path to Firebase's google-services.json (an EAS
+//                           "file" variable); needed for Android push.
+//                           Locally, falls back to ./google-services.json.
+const fs = require('fs');
+const path = require('path');
+
 module.exports = ({ config }) => {
     const clientToken = process.env.META_CLIENT_TOKEN;
     const plugins = (config.plugins || []).map((plugin) => {
@@ -9,5 +16,14 @@ module.exports = ({ config }) => {
         }
         return plugin;
     });
-    return { ...config, plugins };
+
+    const localGoogleServices = path.join(__dirname, 'google-services.json');
+    const googleServicesFile =
+        process.env.GOOGLE_SERVICES_JSON ||
+        (fs.existsSync(localGoogleServices) ? './google-services.json' : undefined);
+
+    const android = { ...config.android };
+    if (googleServicesFile) android.googleServicesFile = googleServicesFile;
+
+    return { ...config, android, plugins };
 };
