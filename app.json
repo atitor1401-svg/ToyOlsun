@@ -2,7 +2,7 @@
   "expo": {
     "name": "ToyOlsun",
     "slug": "ToyOlsun",
-    "version": "1.1.5",
+    "version": "1.1.6",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "toyolsun",
@@ -62,6 +62,24 @@
           "url": "https://sentry.io/",
           "project": "react-native",
           "organization": "toy-olsun"
+        }
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "2633964793790634",
+          "displayName": "ToyOlsun",
+          "scheme": "fb2633964793790634",
+          "isAutoInitEnabled": false,
+          "autoLogAppEventsEnabled": true,
+          "advertiserIDCollectionEnabled": true,
+          "iosUserTrackingPermission": false
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Bu icazə sizə daha uyğun ToyOlsun reklamları göstərmək üçün istifadə olunur."
         }
       ]
     ],

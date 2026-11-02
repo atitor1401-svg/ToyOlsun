@@ -5,7 +5,9 @@ import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { initMetaSdk } from '@/lib/metaSdk';
 import * as Sentry from '@sentry/react-native';
+import { useEffect } from 'react';
 
 Sentry.init({
   dsn: 'https://83214329125c99254d7f8a563e3deaaa@o4512069923307520.ingest.de.sentry.io/4512069926912080',
@@ -32,6 +34,10 @@ export const unstable_settings = {
 
 export default Sentry.wrap(function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    initMetaSdk();
+  }, []);
 
     return (
     <SafeAreaProvider>
