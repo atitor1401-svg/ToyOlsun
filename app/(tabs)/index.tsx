@@ -126,7 +126,7 @@ const TRANSLATIONS = {
         dateLabel: 'Tarix', guestsLabel: 'Qonaqlar',
         changeDate: 'Tarixi dəyiş', guestUnit: 'Nəfər',
         daysLeftPre: 'Mərasimə', daysLeftPost: 'gün qalıb',
-        catAll: 'Hamısı', catVenues: 'Zallar', catArtists: 'Artistlər',
+        shareLabel: 'Paylaş', catAll: 'Hamısı', catVenues: 'Zallar', catArtists: 'Artistlər',
         catMedia: 'Foto & Video', catCars: 'VIP Kortej',
         catWeddingDress: 'Gəlinlik', catFlowers: 'Gül Dükanı', catTourism: 'Bal Ayı',
         catalog: 'KATALOQ', filters: 'Filtrlər', estPrice: 'Təxmini qiymət',
@@ -203,7 +203,7 @@ const TRANSLATIONS = {
         dateLabel: 'Дата', guestsLabel: 'Гости',
         changeDate: 'Изменить дату', guestUnit: 'Человек',
         daysLeftPre: 'До события осталось', daysLeftPost: 'дней',
-        catAll: 'Все', catVenues: 'Залы', catArtists: 'Артисты',
+        shareLabel: 'Поделиться', catAll: 'Все', catVenues: 'Залы', catArtists: 'Артисты',
         catMedia: 'Фото и Видео', catCars: 'VIP Кортеж',
         catWeddingDress: 'Свадебное платье', catFlowers: 'Цветочный магазин', catTourism: 'Медовый месяц',
         catalog: 'КАТАЛОГ', filters: 'Фильтры', estPrice: 'Ориентировочная цена',
@@ -280,7 +280,7 @@ const TRANSLATIONS = {
         dateLabel: 'Date', guestsLabel: 'Guests',
         changeDate: 'Change date', guestUnit: 'People',
         daysLeftPre: '', daysLeftPost: 'days left until event',
-        catAll: 'All', catVenues: 'Venues', catArtists: 'Artists',
+        shareLabel: 'Share', catAll: 'All', catVenues: 'Venues', catArtists: 'Artists',
         catMedia: 'Photo & Video', catCars: 'VIP Cortege',
         catWeddingDress: 'Wedding Dress', catFlowers: 'Flower Shop', catTourism: 'Honeymoon',
         catalog: 'CATALOG', filters: 'Filters', estPrice: 'Estimated price',
@@ -1030,8 +1030,9 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                     )}
                                 </CardImageCarousel>
                                 <View style={styles.cardActionRow}>
-                                    <TouchableOpacity onPress={() => handleShare(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                                        <Feather name="send" size={18} color={Brand.textMuted} />
+                                    <TouchableOpacity style={styles.shareBtn} onPress={() => handleShare(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                        <Feather name="send" size={16} color={Brand.ink} />
+                                        <Text style={styles.shareBtnText} allowFontScaling={false} maxFontSizeMultiplier={1} numberOfLines={1}>{t.shareLabel}</Text>
                                     </TouchableOpacity>
                                 </View>
                                 <View style={styles.cardBody}>
@@ -1457,6 +1458,8 @@ const styles = StyleSheet.create({
     cardBody: { padding: 14 },
     cardTitle: { fontSize: 16, fontWeight: '700', color: '#2C2623', marginBottom: 8 },
     cardActionRow: { flexDirection: 'row', paddingHorizontal: 14, paddingTop: 10 },
+    shareBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.white },
+    shareBtnText: { fontSize: 13, fontWeight: '600', color: Brand.ink },
     tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
     reviewPreview: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
     reviewPreviewMeta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
