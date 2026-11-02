@@ -241,11 +241,12 @@ const slugify = (input: string) => {
         .slice(0, 40) || 'partner';
 };
 
-// Uploaded photos must stay under ~100 KB. Tries the sharpest setting first
+// Uploaded photos must stay under ~150 KB. Tries the sharpest setting first
 // and steps down only until a version fits; returns the JPEG as base64.
-const MAX_UPLOAD_BYTES = 100 * 1024;
+const MAX_UPLOAD_BYTES = 150 * 1024;
 const COMPRESS_STEPS = [
-    { width: 1000, quality: 0.6 },
+    { width: 1000, quality: 0.65 },
+    { width: 1000, quality: 0.55 },
     { width: 1000, quality: 0.45 },
     { width: 900, quality: 0.4 },
     { width: 800, quality: 0.35 },
