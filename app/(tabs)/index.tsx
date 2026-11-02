@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     StyleSheet, Text, View, TextInput, TouchableOpacity,
         ScrollView, StatusBar, Modal, Platform, Linking,
-    PanResponder, Animated, KeyboardAvoidingView, AppState, Share
+    PanResponder, Animated, KeyboardAvoidingView, AppState, Share,
+    NativeSyntheticEvent, NativeScrollEvent
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as ExpoLinking from 'expo-linking';
@@ -429,6 +430,9 @@ function ImageWithLoader({ uri, width }: { uri: string; width: number }) {
     );
 }
 
+// How many catalog cards are mounted at a time (more are added on scroll).
+const CARD_BATCH = 8;
+
 // Swipeable, Instagram-style photo carousel shown directly on the catalog
 // card — lets people flip through a listing's photos without opening the
 // detail view. Falls back to the single cover image when there's no album.
@@ -457,13 +461,19 @@ function CardImageCarousel({ images, fallbackImg, children }: { images?: string[
                     }}
                 >
                     {list.map((uri, idx) => (
-                        <Image
-                            key={idx}
-                            source={{ uri }}
-                            style={{ width: containerWidth, height }}
-                            contentFit="cover"
-                            onError={() => setFailedUris(prev => new Set(prev).add(uri))}
-                        />
+                        // Only the visible photo and its neighbours are loaded;
+                        // decoding every photo of every card at once froze Android.
+                        Math.abs(idx - activeIndex) <= 1 ? (
+                            <Image
+                                key={idx}
+                                source={{ uri }}
+                                style={{ width: containerWidth, height }}
+                                contentFit="cover"
+                                onError={() => setFailedUris(prev => new Set(prev).add(uri))}
+                            />
+                        ) : (
+                            <View key={idx} style={{ width: containerWidth, height, backgroundColor: '#EFECE6' }} />
+                        )
                     ))}
                     {list.length === 0 && <View style={{ width: containerWidth, height, backgroundColor: '#EFECE6' }} />}
                 </ScrollView>
@@ -806,6 +816,17 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
         });
     }, [services, selectedEventType, selectedCat, minPrice, maxPrice, sortBy]);
 
+    // Cards are added in batches as the user scrolls; mounting every card
+    // (with all its photos) at once froze Android on the "All" tab.
+    const [visibleCount, setVisibleCount] = useState(CARD_BATCH);
+    useEffect(() => { setVisibleCount(CARD_BATCH); }, [filteredServices]);
+    const handleCatalogScroll = useCallback(({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+        if (layoutMeasurement.height + contentOffset.y >= contentSize.height - layoutMeasurement.height * 1.5) {
+            setVisibleCount(c => (c < filteredServices.length ? c + CARD_BATCH : c));
+        }
+    }, [filteredServices.length]);
+
     const toggleCart = useCallback((item: ServiceItem) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setCart(prev => prev.some(c => c.id === item.id) ? prev.filter(c => c.id !== item.id) : [...prev, item]);
@@ -925,7 +946,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
             </View>
 
             {activeTab === 'catalog' && (
-                <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleCatalogScroll} scrollEventThrottle={100}>
                     <View style={styles.configCard}>
                         <Text style={styles.configHeader}>{t.paramsTitle}</Text>
                         <View style={styles.configRow}>
@@ -992,7 +1013,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                             <Text style={styles.emptyTitle}>{t.noResultsTitle}</Text>
                             <Text style={styles.emptySub}>{t.noResultsDesc}</Text>
                         </View>
-                    ) : filteredServices.map(item => {
+                    ) : filteredServices.slice(0, visibleCount).map(item => {
                         const inCart = cart.some(c => c.id === item.id);
                         return (
                             <View key={item.id} style={styles.card}>
