@@ -240,6 +240,32 @@ const slugify = (input: string) => {
         .replace(/^-+|-+$/g, '')
         .slice(0, 40) || 'partner';
 };
+
+// Uploaded photos must stay under ~100 KB. Tries the sharpest setting first
+// and steps down only until a version fits; returns the JPEG as base64.
+const MAX_UPLOAD_BYTES = 100 * 1024;
+const COMPRESS_STEPS = [
+    { width: 1000, quality: 0.6 },
+    { width: 1000, quality: 0.45 },
+    { width: 900, quality: 0.4 },
+    { width: 800, quality: 0.35 },
+    { width: 720, quality: 0.3 },
+];
+const compressForUpload = async (uri: string): Promise<string> => {
+    let base64 = '';
+    for (const step of COMPRESS_STEPS) {
+        const out = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: step.width } }],
+            { compress: step.quality, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        base64 = await FileSystem.readAsStringAsync(out.uri, { encoding: 'base64' });
+        // base64 is 4 characters per 3 bytes
+        if (base64.length * 0.75 <= MAX_UPLOAD_BYTES) break;
+    }
+    return base64;
+};
+
 function NewPasswordScreen({ lang, onDone }: { lang: Language; onDone: () => void }) {
     const t = PORTAL_TEXT[lang];
     const [newPassword, setNewPassword] = useState('');
@@ -678,15 +704,9 @@ function ServiceForm({
             const folderSlug = slugify(title);
             const uploaded: string[] = [];
             for (const asset of result.assets) {
-                const fileExt = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
-                const manipulated = await ImageManipulator.manipulateAsync(
-                    asset.uri,
-                    [{ resize: { width: 1000 } }],
-                    { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG }
-                );
+                const base64 = await compressForUpload(asset.uri);
                 const fileName = `partners/${folderSlug}/${Date.now()}-${Math.floor(Math.random() * 100000)}.jpg`;
                 const contentType = 'image/jpeg';
-                const base64 = await FileSystem.readAsStringAsync(manipulated.uri, { encoding: 'base64' });
                 const { error } = await supabase.storage.from('images').upload(fileName, decode(base64), { contentType, upsert: false });
                 if (error) throw error;
                 const { data } = supabase.storage.from('images').getPublicUrl(fileName);
