@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Colors as Brand } from '@/constants/brand';
 import ExploreSearch from '@/components/ExploreSearch';
+import { matchesCategory } from '@/lib/categories';
 
 interface Review {
   id: string;
@@ -33,7 +34,7 @@ interface Review {
 
 export type EventType = 'wedding' | 'khyna' | 'birthday';
 export type SortOption = 'rating' | 'asc' | 'desc';
-export type CategoryFilter = 'all' | 'venues' | 'artists' | 'media' | 'cars' | 'wedding_dress' | 'flowers' | 'tourism';
+export type CategoryFilter = 'all' | 'venues' | 'artists' | 'dj' | 'media' | 'cars' | 'wedding_dress' | 'flowers' | 'tourism';
 export type Language = 'az' | 'ru' | 'en';
 
 export interface ServiceItem {
@@ -78,6 +79,11 @@ const TAG_ID_LABELS: Record<string, { az: string; ru: string; en: string }> = {
     peoples_artist: { az: 'Xalq Artisti', ru: 'Народный артист', en: 'People\'s Artist' },
     dj: { az: 'DJ', ru: 'DJ', en: 'DJ' },
     toastmaster: { az: 'Toastmaster', ru: 'Тамада', en: 'Toastmaster' },
+    sound_system: { az: 'Səs Sistemi', ru: 'Звуковая система', en: 'Sound System' },
+    light_show: { az: 'İşıq Şousu', ru: 'Световое шоу', en: 'Light Show' },
+    open_format: { az: 'Hər Janr', ru: 'Любой жанр', en: 'Open Format' },
+    national_music: { az: 'Milli Musiqi', ru: 'Нац. музыка', en: 'National Music' },
+    mc_host: { az: 'Aparıcılıq', ru: 'Ведущий', en: 'MC / Host' },
     live_orchestra: { az: 'Canlı Orkestr', ru: 'Живой оркестр', en: 'Live Orchestra' },
     national_ensemble: { az: 'Milli Ansambl', ru: 'Нац. ансамбль', en: 'National Ensemble' },
     full_program: { az: 'Tam Proqram', ru: 'Полная программа', en: 'Full Program' },
@@ -128,7 +134,7 @@ const TRANSLATIONS = {
         changeDate: 'Tarixi dəyiş', guestUnit: 'Nəfər',
         daysLeftPre: 'Mərasimə', daysLeftPost: 'gün qalıb',
         searchPlaceholder: 'Zal, müğənni, fotoqraf axtar…',
-        shareLabel: 'Paylaş', catAll: 'Hamısı', catVenues: 'Zallar', catArtists: 'Artistlər',
+        shareLabel: 'Paylaş', catAll: 'Hamısı', catVenues: 'Zallar', catArtists: 'Artistlər', catDj: 'DJ',
         catMedia: 'Foto & Video', catCars: 'VIP Kortej',
         catWeddingDress: 'Gəlinlik', catFlowers: 'Gül Dükanı', catTourism: 'Bal Ayı',
         catalog: 'KATALOQ', filters: 'Filtrlər', estPrice: 'Təxmini qiymət',
@@ -206,7 +212,7 @@ const TRANSLATIONS = {
         changeDate: 'Изменить дату', guestUnit: 'Человек',
         daysLeftPre: 'До события осталось', daysLeftPost: 'дней',
         searchPlaceholder: 'Найти зал, певца, фотографа…',
-        shareLabel: 'Поделиться', catAll: 'Все', catVenues: 'Залы', catArtists: 'Артисты',
+        shareLabel: 'Поделиться', catAll: 'Все', catVenues: 'Залы', catArtists: 'Артисты', catDj: 'DJ',
         catMedia: 'Фото и Видео', catCars: 'VIP Кортеж',
         catWeddingDress: 'Свадебное платье', catFlowers: 'Цветочный магазин', catTourism: 'Медовый месяц',
         catalog: 'КАТАЛОГ', filters: 'Фильтры', estPrice: 'Ориентировочная цена',
@@ -284,7 +290,7 @@ const TRANSLATIONS = {
         changeDate: 'Change date', guestUnit: 'People',
         daysLeftPre: '', daysLeftPost: 'days left until event',
         searchPlaceholder: 'Search venues, singers, photographers…',
-        shareLabel: 'Share', catAll: 'All', catVenues: 'Venues', catArtists: 'Artists',
+        shareLabel: 'Share', catAll: 'All', catVenues: 'Venues', catArtists: 'Artists', catDj: 'DJ',
         catMedia: 'Photo & Video', catCars: 'VIP Cortege',
         catWeddingDress: 'Wedding Dress', catFlowers: 'Flower Shop', catTourism: 'Honeymoon',
         catalog: 'CATALOG', filters: 'Filters', estPrice: 'Estimated price',
@@ -821,7 +827,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
     const filteredServices = useMemo(() => {
         return services.filter(item => {
             if (selectedEventType && !item.event_type?.includes(selectedEventType)) return false;
-            if (selectedCat !== 'all' && item.category !== selectedCat) return false;
+            if (!matchesCategory(item, selectedCat)) return false;
             const min = parseFloat(minPrice), max = parseFloat(maxPrice);
             if (!isNaN(min) && item.price < min) return false;
             if (!isNaN(max) && item.price > max) return false;
@@ -996,7 +1002,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                     </TouchableOpacity>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
-                        {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }, { id: 'wedding_dress', name: t.catWeddingDress }, { id: 'flowers', name: t.catFlowers }, { id: 'tourism', name: t.catTourism }].map(f => (
+                        {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'dj', name: t.catDj }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }, { id: 'wedding_dress', name: t.catWeddingDress }, { id: 'flowers', name: t.catFlowers }, { id: 'tourism', name: t.catTourism }].map(f => (
                             <TouchableOpacity key={f.id} style={[styles.chip, selectedCat === f.id && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setSelectedCat(f.id as CategoryFilter); }}>
                                 <Text style={[styles.chipText, selectedCat === f.id && styles.activeChipText]} allowFontScaling={false} maxFontSizeMultiplier={1}>{f.name}</Text>
                             </TouchableOpacity>

@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors as Brand } from '@/constants/brand';
+import { matchesCategory } from '@/lib/categories';
 
 type Lang = 'az' | 'ru' | 'en';
 
@@ -64,6 +65,7 @@ const CATEGORIES: { id: string; az: string; ru: string; en: string }[] = [
     { id: 'all', az: 'Hamısı', ru: 'Все', en: 'All' },
     { id: 'venues', az: 'Zallar', ru: 'Залы', en: 'Venues' },
     { id: 'artists', az: 'Artistlər', ru: 'Артисты', en: 'Artists' },
+    { id: 'dj', az: 'DJ', ru: 'DJ', en: 'DJ' },
     { id: 'media', az: 'Foto & Video', ru: 'Фото и Видео', en: 'Photo & Video' },
     { id: 'cars', az: 'VIP Kortej', ru: 'VIP Кортеж', en: 'VIP Cortege' },
     { id: 'wedding_dress', az: 'Gəlinlik', ru: 'Свадебное платье', en: 'Wedding Dress' },
@@ -175,7 +177,7 @@ export default function ExploreSearch<T extends ExploreService>({
     }, [visible, close]);
 
     const inCategory = useMemo(
-        () => (category === 'all' ? services : services.filter(s => s.category === category)),
+        () => (category === 'all' ? services : services.filter(s => matchesCategory(s, category))),
         [services, category],
     );
 
