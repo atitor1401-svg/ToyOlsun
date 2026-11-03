@@ -23,6 +23,7 @@ import { Colors as Brand } from '@/constants/brand';
 import ExploreSearch from '@/components/ExploreSearch';
 import { matchesCategory } from '@/lib/categories';
 import { normalizeAzPhone, isAzMobile, telUrl, whatsappUrl } from '@/lib/contact';
+import { useAnnouncements, AnnouncementPopup, AnnouncementStrip } from '@/components/Announcements';
 
 interface Review {
   id: string;
@@ -556,6 +557,7 @@ export default function LuxuryApp() {
     const [sortBy, setSortBy] = useState<SortOption>('rating');
     const [cart, setCart] = useState<ServiceItem[]>([]);
     const [exploreVisible, setExploreVisible] = useState<boolean>(false);
+    const announcements = useAnnouncements();
 
     // --- Partner portal ---
     const [showPartnerPortal, setShowPartnerPortal] = useState<boolean>(false);
@@ -885,6 +887,24 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
         setDetailModalVisible(true);
     };
 
+    // Actions behind in-app banners (Supabase app_announcements).
+    const CATEGORY_IDS: CategoryFilter[] = ['venues', 'artists', 'dj', 'media', 'cars', 'wedding_dress', 'flowers', 'decor', 'tourism'];
+    const announcementHandlers = {
+        lang,
+        onOpenService: (serviceId: string) => {
+            const item = services.find(s => String(s.id) === String(serviceId));
+            if (!item) return;
+            setActiveTab('catalog');
+            openDetail(item);
+        },
+        onSelectCategory: (category: string) => {
+            if (!CATEGORY_IDS.includes(category as CategoryFilter)) return;
+            setActiveTab('catalog');
+            setExploreVisible(false);
+            setSelectedCat(category as CategoryFilter);
+        },
+    };
+
     const handleShare = async (item: ServiceItem) => {
         Haptics.selectionAsync();
         // A normal https link, so WhatsApp and other messengers make it
@@ -1022,6 +1042,8 @@ ${link}`,
                             <Text style={styles.countdownText}>{t.daysLeftPre} <Text style={styles.countdownDays}>{daysLeft}</Text> {t.daysLeftPost}</Text>
                         </View>
                     </View>
+
+                    <AnnouncementStrip {...announcementHandlers} item={announcements.strip} onDone={announcements.markSeen} />
 
                     <TouchableOpacity style={styles.searchPill} activeOpacity={0.8} onPress={() => { Haptics.selectionAsync(); setExploreVisible(true); }}>
                         <Feather name="search" size={17} color={Brand.textMuted} />
@@ -1315,6 +1337,11 @@ ${link}`,
                     <Text style={[styles.tabText, activeTab === 'concierge' && styles.tabTextActive]} allowFontScaling={false} maxFontSizeMultiplier={1}>{t.tabConcierge}</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* IN-APP INFO BANNER (popup), not on top of another sheet */}
+            {!detailModalVisible && !checkoutModalVisible && !exploreVisible && (
+                <AnnouncementPopup {...announcementHandlers} item={announcements.popup} onDone={announcements.markSeen} />
+            )}
 
             {/* INSTAGRAM-STYLE EXPLORE SEARCH (overlay; the detail modal opens on top of it) */}
             <ExploreSearch
