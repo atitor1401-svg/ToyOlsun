@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "toyolsun",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ibo96.ToyOlsun",
@@ -20,7 +19,6 @@
         "backgroundColor": "#F8F1EA",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
-      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
       "permissions": ["com.google.android.gms.permission.AD_ID"],
       "package": "com.ibo96.ToyOlsun"

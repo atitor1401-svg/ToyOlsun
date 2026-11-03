@@ -110,7 +110,7 @@ export default function ExploreSearch<T extends ExploreService>({
     const t = TEXT[lang];
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
-    const inputRef = useRef<TextInput>(null);
+    const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
     const appear = useRef(new Animated.Value(0)).current;
 
     const [mounted, setMounted] = useState(visible);
