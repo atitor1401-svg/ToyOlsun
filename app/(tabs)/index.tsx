@@ -20,6 +20,7 @@ import { Feather } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Colors as Brand } from '@/constants/brand';
+import ExploreSearch from '@/components/ExploreSearch';
 
 interface Review {
   id: string;
@@ -126,6 +127,7 @@ const TRANSLATIONS = {
         dateLabel: 'Tarix', guestsLabel: 'Qonaqlar',
         changeDate: 'Tarixi dəyiş', guestUnit: 'Nəfər',
         daysLeftPre: 'Mərasimə', daysLeftPost: 'gün qalıb',
+        searchPlaceholder: 'Zal, müğənni, fotoqraf axtar…',
         shareLabel: 'Paylaş', catAll: 'Hamısı', catVenues: 'Zallar', catArtists: 'Artistlər',
         catMedia: 'Foto & Video', catCars: 'VIP Kortej',
         catWeddingDress: 'Gəlinlik', catFlowers: 'Gül Dükanı', catTourism: 'Bal Ayı',
@@ -203,6 +205,7 @@ const TRANSLATIONS = {
         dateLabel: 'Дата', guestsLabel: 'Гости',
         changeDate: 'Изменить дату', guestUnit: 'Человек',
         daysLeftPre: 'До события осталось', daysLeftPost: 'дней',
+        searchPlaceholder: 'Найти зал, певца, фотографа…',
         shareLabel: 'Поделиться', catAll: 'Все', catVenues: 'Залы', catArtists: 'Артисты',
         catMedia: 'Фото и Видео', catCars: 'VIP Кортеж',
         catWeddingDress: 'Свадебное платье', catFlowers: 'Цветочный магазин', catTourism: 'Медовый месяц',
@@ -280,6 +283,7 @@ const TRANSLATIONS = {
         dateLabel: 'Date', guestsLabel: 'Guests',
         changeDate: 'Change date', guestUnit: 'People',
         daysLeftPre: '', daysLeftPost: 'days left until event',
+        searchPlaceholder: 'Search venues, singers, photographers…',
         shareLabel: 'Share', catAll: 'All', catVenues: 'Venues', catArtists: 'Artists',
         catMedia: 'Photo & Video', catCars: 'VIP Cortege',
         catWeddingDress: 'Wedding Dress', catFlowers: 'Flower Shop', catTourism: 'Honeymoon',
@@ -516,6 +520,7 @@ export default function LuxuryApp() {
     const [maxPrice, setMaxPrice] = useState<string>('');
     const [sortBy, setSortBy] = useState<SortOption>('rating');
     const [cart, setCart] = useState<ServiceItem[]>([]);
+    const [exploreVisible, setExploreVisible] = useState<boolean>(false);
 
     // --- Partner portal ---
     const [showPartnerPortal, setShowPartnerPortal] = useState<boolean>(false);
@@ -816,6 +821,13 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
         });
     }, [services, selectedEventType, selectedCat, minPrice, maxPrice, sortBy]);
 
+    // Explore search covers every service for the chosen event type; it has
+    // its own category chips and ignores the catalog's price filter.
+    const exploreServices = useMemo(
+        () => services.filter(item => !selectedEventType || item.event_type?.includes(selectedEventType)),
+        [services, selectedEventType],
+    );
+
     // Cards are added in batches as the user scrolls; mounting every card
     // (with all its photos) at once froze Android on the "All" tab.
     const [visibleCount, setVisibleCount] = useState(CARD_BATCH);
@@ -965,6 +977,11 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                             <Text style={styles.countdownText}>{t.daysLeftPre} <Text style={styles.countdownDays}>{daysLeft}</Text> {t.daysLeftPost}</Text>
                         </View>
                     </View>
+
+                    <TouchableOpacity style={styles.searchPill} activeOpacity={0.8} onPress={() => { Haptics.selectionAsync(); setExploreVisible(true); }}>
+                        <Feather name="search" size={17} color={Brand.textMuted} />
+                        <Text style={styles.searchPillText} numberOfLines={1} maxFontSizeMultiplier={1.2}>{t.searchPlaceholder}</Text>
+                    </TouchableOpacity>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
                         {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }, { id: 'wedding_dress', name: t.catWeddingDress }, { id: 'flowers', name: t.catFlowers }, { id: 'tourism', name: t.catTourism }].map(f => (
@@ -1254,6 +1271,17 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                 </TouchableOpacity>
             </View>
 
+            {/* INSTAGRAM-STYLE EXPLORE SEARCH (overlay; the detail modal opens on top of it) */}
+            <ExploreSearch
+                visible={exploreVisible}
+                onClose={() => setExploreVisible(false)}
+                services={exploreServices}
+                lang={lang}
+                onOpenService={openDetail}
+                tagLabel={resolveTagLabel}
+                formatPrice={formatCurrency}
+            />
+
             {/* DATE PICKER MODAL */}
             <Modal animationType="fade" onRequestClose={() => setShowDatePickerModal(false)} transparent visible={showDatePickerModal}>
                 <TouchableOpacity activeOpacity={1} onPress={() => setShowDatePickerModal(false)} style={styles.modalOverlayCenter}>
@@ -1438,6 +1466,8 @@ const styles = StyleSheet.create({
     countdownText: { color: '#EFECE6', fontSize: 12 },
     countdownDays: { color: '#D4AF37', fontWeight: '700', fontSize: 14 },
     filterBar: { flexDirection: 'row', marginBottom: 16 },
+    searchPill: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Brand.white, borderRadius: 14, borderWidth: 1, borderColor: Brand.border, paddingHorizontal: 14, height: 44, marginBottom: 14 },
+    searchPillText: { flex: 1, fontSize: 14, color: Brand.textPlaceholder },
     chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EFECE6', marginRight: 8, flexShrink: 0 },
     activeChip: { backgroundColor: '#2C2623', borderColor: '#2C2623' },
     chipText: { fontSize: 12, color: '#6A625C', fontWeight: '500' },
