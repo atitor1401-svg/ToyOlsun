@@ -34,7 +34,7 @@ interface Review {
 
 export type EventType = 'wedding' | 'khyna' | 'birthday';
 export type SortOption = 'rating' | 'asc' | 'desc';
-export type CategoryFilter = 'all' | 'venues' | 'artists' | 'dj' | 'media' | 'cars' | 'wedding_dress' | 'flowers' | 'tourism';
+export type CategoryFilter = 'all' | 'venues' | 'artists' | 'dj' | 'media' | 'cars' | 'wedding_dress' | 'flowers' | 'decor' | 'tourism';
 export type Language = 'az' | 'ru' | 'en';
 
 export interface ServiceItem {
@@ -108,6 +108,13 @@ const TAG_ID_LABELS: Record<string, { az: string; ru: string; en: string }> = {
     car_decoration: { az: 'Maşın Bəzəyi', ru: 'Оформление авто', en: 'Car Decoration' },
     fresh_flowers: { az: 'Təzə Güllər', ru: 'Свежие цветы', en: 'Fresh Flowers' },
     artificial_flowers: { az: 'Süni Güllər', ru: 'Искусственные цветы', en: 'Artificial Flowers' },
+    stage_decoration: { az: 'Səhnə Dekoru', ru: 'Оформление сцены', en: 'Stage Decoration' },
+    table_decoration: { az: 'Masa Dekoru', ru: 'Оформление столов', en: 'Table Decoration' },
+    photo_zone: { az: 'Foto Zona', ru: 'Фотозона', en: 'Photo Zone' },
+    balloon_decor: { az: 'Şar Dekoru', ru: 'Оформление шарами', en: 'Balloon Decor' },
+    lighting_decor: { az: 'İşıqlandırma', ru: 'Световое оформление', en: 'Lighting' },
+    khyna_decor: { az: 'Xına Dekoru', ru: 'Оформление хны', en: 'Khyna Decor' },
+    wedding_arch: { az: 'Toy Tağı', ru: 'Свадебная арка', en: 'Wedding Arch' },
     international: { az: 'Xarici Ölkə', ru: 'За границей', en: 'International' },
     local_tours: { az: 'Yerli Turlar', ru: 'Местные туры', en: 'Local Tours' },
     all_inclusive: { az: 'All Inclusive', ru: 'Всё включено', en: 'All Inclusive' },
@@ -136,7 +143,7 @@ const TRANSLATIONS = {
         searchPlaceholder: 'Zal, müğənni, fotoqraf axtar…',
         shareLabel: 'Paylaş', catAll: 'Hamısı', catVenues: 'Zallar', catArtists: 'Artistlər', catDj: 'DJ',
         catMedia: 'Foto & Video', catCars: 'VIP Kortej',
-        catWeddingDress: 'Gəlinlik', catFlowers: 'Gül Dükanı', catTourism: 'Bal Ayı',
+        catWeddingDress: 'Gəlinlik', catFlowers: 'Gül Dükanı', catDecor: 'Dekor', catTourism: 'Bal Ayı',
         catalog: 'KATALOQ', filters: 'Filtrlər', estPrice: 'Təxmini qiymət',
         details: 'Ətraflı bax →', addToCart: 'ƏLAVƏ ET', inCart: 'SMETADA',
         calcTitle: 'SMETA HESABLAMASI', guestsCount: 'qonaq',
@@ -214,7 +221,7 @@ const TRANSLATIONS = {
         searchPlaceholder: 'Найти зал, певца, фотографа…',
         shareLabel: 'Поделиться', catAll: 'Все', catVenues: 'Залы', catArtists: 'Артисты', catDj: 'DJ',
         catMedia: 'Фото и Видео', catCars: 'VIP Кортеж',
-        catWeddingDress: 'Свадебное платье', catFlowers: 'Цветочный магазин', catTourism: 'Медовый месяц',
+        catWeddingDress: 'Свадебное платье', catFlowers: 'Цветочный магазин', catDecor: 'Декор', catTourism: 'Медовый месяц',
         catalog: 'КАТАЛОГ', filters: 'Фильтры', estPrice: 'Ориентировочная цена',
         details: 'Подробнее →', addToCart: 'ДОБАВИТЬ', inCart: 'В СМЕТЕ',
         calcTitle: 'РАСЧЕТ СМЕТЫ', guestsCount: 'гостей',
@@ -292,7 +299,7 @@ const TRANSLATIONS = {
         searchPlaceholder: 'Search venues, singers, photographers…',
         shareLabel: 'Share', catAll: 'All', catVenues: 'Venues', catArtists: 'Artists', catDj: 'DJ',
         catMedia: 'Photo & Video', catCars: 'VIP Cortege',
-        catWeddingDress: 'Wedding Dress', catFlowers: 'Flower Shop', catTourism: 'Honeymoon',
+        catWeddingDress: 'Wedding Dress', catFlowers: 'Flower Shop', catDecor: 'Decor', catTourism: 'Honeymoon',
         catalog: 'CATALOG', filters: 'Filters', estPrice: 'Estimated price',
         details: 'Details →', addToCart: 'ADD TO ESTIMATE', inCart: 'ADDED',
         calcTitle: 'ESTIMATE CALCULATION', guestsCount: 'guests',
@@ -1002,7 +1009,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                     </TouchableOpacity>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
-                        {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'dj', name: t.catDj }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }, { id: 'wedding_dress', name: t.catWeddingDress }, { id: 'flowers', name: t.catFlowers }, { id: 'tourism', name: t.catTourism }].map(f => (
+                        {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'dj', name: t.catDj }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }, { id: 'wedding_dress', name: t.catWeddingDress }, { id: 'flowers', name: t.catFlowers }, { id: 'decor', name: t.catDecor }, { id: 'tourism', name: t.catTourism }].map(f => (
                             <TouchableOpacity key={f.id} style={[styles.chip, selectedCat === f.id && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setSelectedCat(f.id as CategoryFilter); }}>
                                 <Text style={[styles.chipText, selectedCat === f.id && styles.activeChipText]} allowFontScaling={false} maxFontSizeMultiplier={1}>{f.name}</Text>
                             </TouchableOpacity>

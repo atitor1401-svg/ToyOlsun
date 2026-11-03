@@ -79,6 +79,15 @@ const CATEGORY_TAGS: Record<string, { id: string; az: string; ru: string; en: st
         { id: 'fresh_flowers', az: 'Təzə Güllər', ru: 'Свежие цветы', en: 'Fresh Flowers' },
         { id: 'artificial_flowers', az: 'Süni Güllər', ru: 'Искусственные цветы', en: 'Artificial Flowers' },
     ],
+    decor: [
+        { id: 'stage_decoration', az: 'Səhnə Dekoru', ru: 'Оформление сцены', en: 'Stage Decoration' },
+        { id: 'table_decoration', az: 'Masa Dekoru', ru: 'Оформление столов', en: 'Table Decoration' },
+        { id: 'photo_zone', az: 'Foto Zona', ru: 'Фотозона', en: 'Photo Zone' },
+        { id: 'balloon_decor', az: 'Şar Dekoru', ru: 'Оформление шарами', en: 'Balloon Decor' },
+        { id: 'lighting_decor', az: 'İşıqlandırma', ru: 'Световое оформление', en: 'Lighting' },
+        { id: 'khyna_decor', az: 'Xına Dekoru', ru: 'Оформление хны', en: 'Khyna Decor' },
+        { id: 'wedding_arch', az: 'Toy Tağı', ru: 'Свадебная арка', en: 'Wedding Arch' },
+    ],
     tourism: [
         { id: 'international', az: 'Xarici Ölkə', ru: 'За границей', en: 'International' },
         { id: 'local_tours', az: 'Yerli Turlar', ru: 'Местные туры', en: 'Local Tours' },
@@ -124,7 +133,7 @@ const PORTAL_TEXT = {
         partnerImagePick: '📷 Şəkil seç', partnerImageNeedTitle: 'Şəkil əlavə etməzdən əvvəl xidmətin adını yazın',
         partnerTags: 'Xüsusiyyətlər', partnerEventTypes: 'Hansı tədbirlərə uyğundur', partnerSubmit: 'GÖNDƏR',
         partnerSubmitting: 'GÖNDƏRİLİR...', catVenuesShort: 'Zal', catArtistsShort: 'Artist', catDjShort: 'DJ', catMediaShort: 'Foto/Video', catCarsShort: 'Kortej',
-        catWeddingDressShort: 'Gəlinlik', catFlowersShort: 'Gül', catTourismShort: 'Bal Ayı',
+        catWeddingDressShort: 'Gəlinlik', catFlowersShort: 'Gül', catDecorShort: 'Dekor', catTourismShort: 'Bal Ayı',
         wedding: 'Toy', khyna: 'Xına', birthday: 'Ad günü', savedNeedsReview: 'Dəyişiklikləriniz saxlanıldı, yenidən yoxlanışa göndərildi.',
     },
     ru: {
@@ -162,7 +171,7 @@ const PORTAL_TEXT = {
         partnerImagePick: '📷 Выбрать фото', partnerImageNeedTitle: 'Сначала укажите название услуги',
         partnerTags: 'Особенности', partnerEventTypes: 'Подходит для мероприятий', partnerSubmit: 'ОТПРАВИТЬ',
         partnerSubmitting: 'ОТПРАВКА...', catVenuesShort: 'Зал', catArtistsShort: 'Артист', catDjShort: 'DJ', catMediaShort: 'Фото/Видео', catCarsShort: 'Кортеж',
-        catWeddingDressShort: 'Платье', catFlowersShort: 'Цветы', catTourismShort: 'Медовый месяц',
+        catWeddingDressShort: 'Платье', catFlowersShort: 'Цветы', catDecorShort: 'Декор', catTourismShort: 'Медовый месяц',
         wedding: 'Свадьба', khyna: 'Хна', birthday: 'День рождения', savedNeedsReview: 'Изменения сохранены и отправлены на повторную проверку.',
     },
     en: {
@@ -200,7 +209,7 @@ const PORTAL_TEXT = {
         partnerImagePick: '📷 Pick a photo', partnerImageNeedTitle: 'Please enter the service name first',
         partnerTags: 'Features', partnerEventTypes: 'Suitable for events', partnerSubmit: 'SUBMIT',
         partnerSubmitting: 'SUBMITTING...', catVenuesShort: 'Venue', catArtistsShort: 'Artist', catDjShort: 'DJ', catMediaShort: 'Photo/Video', catCarsShort: 'Cortege',
-        catWeddingDressShort: 'Dress', catFlowersShort: 'Flowers', catTourismShort: 'Honeymoon',
+        catWeddingDressShort: 'Dress', catFlowersShort: 'Flowers', catDecorShort: 'Decor', catTourismShort: 'Honeymoon',
         wedding: 'Wedding', khyna: 'Khyna', birthday: 'Birthday', savedNeedsReview: 'Your changes were saved and sent for re-review.',
     },
 };
@@ -809,6 +818,7 @@ function ServiceForm({
                     { id: 'cars', label: t.catCarsShort },
                     { id: 'wedding_dress', label: t.catWeddingDressShort },
                     { id: 'flowers', label: t.catFlowersShort },
+                    { id: 'decor', label: t.catDecorShort },
                     { id: 'tourism', label: t.catTourismShort },
                 ] as { id: CategoryFilter; label: string }[]).map(c => (
                     <TouchableOpacity key={c.id} style={[styles.partnerCatChip, category === c.id && styles.partnerCatChipActive]} onPress={() => changeCategory(c.id)}>

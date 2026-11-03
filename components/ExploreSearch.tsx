@@ -70,6 +70,7 @@ const CATEGORIES: { id: string; az: string; ru: string; en: string }[] = [
     { id: 'cars', az: 'VIP Kortej', ru: 'VIP Кортеж', en: 'VIP Cortege' },
     { id: 'wedding_dress', az: 'Gəlinlik', ru: 'Свадебное платье', en: 'Wedding Dress' },
     { id: 'flowers', az: 'Gül Dükanı', ru: 'Цветочный магазин', en: 'Flower Shop' },
+    { id: 'decor', az: 'Dekor', ru: 'Декор', en: 'Decor' },
     { id: 'tourism', az: 'Bal Ayı', ru: 'Медовый месяц', en: 'Honeymoon' },
 ];
 const categoryName = (id: string, lang: Lang) => CATEGORIES.find(c => c.id === id)?.[lang] ?? '';
