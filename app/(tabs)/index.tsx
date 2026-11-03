@@ -16,12 +16,13 @@ import { Image } from 'expo-image';
 import { Calendar } from 'react-native-calendars';
 import PartnerPortal from './PartnerPortal';
 import CustomerPortal, { ServiceReviews } from './CustomerPortal';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Colors as Brand } from '@/constants/brand';
 import ExploreSearch from '@/components/ExploreSearch';
 import { matchesCategory } from '@/lib/categories';
+import { normalizeAzPhone, isAzMobile, telUrl, whatsappUrl } from '@/lib/contact';
 
 interface Review {
   id: string;
@@ -141,6 +142,8 @@ const TRANSLATIONS = {
         changeDate: 'Tarixi dəyiş', guestUnit: 'Nəfər',
         daysLeftPre: 'Mərasimə', daysLeftPost: 'gün qalıb',
         searchPlaceholder: 'Zal, müğənni, fotoqraf axtar…',
+        callBtn: 'Zəng et', whatsappBtn: 'WhatsApp',
+        whatsappMsg: 'Salam! Toy Olsun tətbiqində "{title}" xidmətinizi gördüm. Ətraflı məlumat ala bilərəm?',
         shareLabel: 'Paylaş', catAll: 'Hamısı', catVenues: 'Zallar', catArtists: 'Artistlər', catDj: 'DJ',
         catMedia: 'Foto & Video', catCars: 'VIP Kortej',
         catWeddingDress: 'Gəlinlik', catFlowers: 'Gül Dükanı', catDecor: 'Dekor', catTourism: 'Bal Ayı',
@@ -219,6 +222,8 @@ const TRANSLATIONS = {
         changeDate: 'Изменить дату', guestUnit: 'Человек',
         daysLeftPre: 'До события осталось', daysLeftPost: 'дней',
         searchPlaceholder: 'Найти зал, певца, фотографа…',
+        callBtn: 'Позвонить', whatsappBtn: 'WhatsApp',
+        whatsappMsg: 'Здравствуйте! Увидел(а) вашу услугу «{title}» в приложении Toy Olsun. Можно узнать подробнее?',
         shareLabel: 'Поделиться', catAll: 'Все', catVenues: 'Залы', catArtists: 'Артисты', catDj: 'DJ',
         catMedia: 'Фото и Видео', catCars: 'VIP Кортеж',
         catWeddingDress: 'Свадебное платье', catFlowers: 'Цветочный магазин', catDecor: 'Декор', catTourism: 'Медовый месяц',
@@ -297,6 +302,8 @@ const TRANSLATIONS = {
         changeDate: 'Change date', guestUnit: 'People',
         daysLeftPre: '', daysLeftPost: 'days left until event',
         searchPlaceholder: 'Search venues, singers, photographers…',
+        callBtn: 'Call', whatsappBtn: 'WhatsApp',
+        whatsappMsg: 'Hello! I saw your service "{title}" on the Toy Olsun app. Could you tell me more?',
         shareLabel: 'Share', catAll: 'All', catVenues: 'Venues', catArtists: 'Artists', catDj: 'DJ',
         catMedia: 'Photo & Video', catCars: 'VIP Cortege',
         catWeddingDress: 'Wedding Dress', catFlowers: 'Flower Shop', catDecor: 'Decor', catTourism: 'Honeymoon',
@@ -1363,6 +1370,32 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                         <Text style={styles.detailInfo}>{selectedItem.capacity}</Text>
                                     </View>
                                 )}
+                                {(() => {
+                                    const phone = normalizeAzPhone(selectedItem.phone);
+                                    if (!phone) return null;
+                                    const open = (url: string) => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        Linking.openURL(url).catch(() => {});
+                                    };
+                                    return (
+                                        <View style={styles.contactRow}>
+                                            <TouchableOpacity style={styles.contactBtn} activeOpacity={0.8} onPress={() => open(telUrl(phone))}>
+                                                <Feather name="phone" size={16} color={Brand.ink} />
+                                                <Text style={styles.contactBtnText} numberOfLines={1} allowFontScaling={false}>{t.callBtn}</Text>
+                                            </TouchableOpacity>
+                                            {isAzMobile(phone) && (
+                                                <TouchableOpacity
+                                                    style={[styles.contactBtn, styles.contactWhatsappBtn]}
+                                                    activeOpacity={0.8}
+                                                    onPress={() => open(whatsappUrl(phone, t.whatsappMsg.replace('{title}', selectedItem.title)))}
+                                                >
+                                                    <FontAwesome name="whatsapp" size={17} color="#FFFFFF" />
+                                                    <Text style={[styles.contactBtnText, { color: '#FFFFFF' }]} numberOfLines={1} allowFontScaling={false}>{t.whatsappBtn}</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                    );
+                                })()}
                                 <Button
                                     label={cart.some(c => c.id === selectedItem.id) ? t.inCart : t.addToCart}
                                     variant="primary"
@@ -1492,6 +1525,10 @@ const styles = StyleSheet.create({
     countdownText: { color: '#EFECE6', fontSize: 12 },
     countdownDays: { color: '#D4AF37', fontWeight: '700', fontSize: 14 },
     filterBar: { flexDirection: 'row', marginBottom: 16 },
+    contactRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+    contactBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: 14, borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.white },
+    contactWhatsappBtn: { backgroundColor: '#25D366', borderColor: '#25D366' },
+    contactBtnText: { fontSize: 15, fontWeight: '700', color: Brand.ink },
     searchPill: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Brand.white, borderRadius: 14, borderWidth: 1, borderColor: Brand.border, paddingHorizontal: 14, height: 44, marginBottom: 14 },
     searchPillText: { flex: 1, fontSize: 14, color: Brand.textPlaceholder },
     chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EFECE6', marginRight: 8, flexShrink: 0 },
