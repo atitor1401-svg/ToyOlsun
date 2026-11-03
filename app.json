@@ -22,6 +22,7 @@
       },
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
+      "permissions": ["com.google.android.gms.permission.AD_ID"],
       "package": "com.ibo96.ToyOlsun"
     },
     "web": {
