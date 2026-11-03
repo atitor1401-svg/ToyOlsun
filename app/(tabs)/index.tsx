@@ -914,11 +914,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
         const androidLink = 'https://play.google.com/store/apps/details?id=com.ibo96.ToyOlsun';
         try {
             await Share.share({
-                message: `${item.title} — ${formatCurrency(item.price)} ${item.unit}
-
-ToyOlsun tətbiqini yükləyin:
-iPhone: ${iosLink}
-Android: ${androidLink}`,
+                message: `${item.title} — ${formatCurrency(item.price)} ${item.unit}\n\nToyOlsun tətbiqini yükləyin:\niPhone: ${iosLink}\nAndroid: ${androidLink}`,
             });
         } catch {
             // User cancelled or share sheet failed to open — nothing to do
