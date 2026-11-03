@@ -23,6 +23,7 @@ import { Colors as Brand } from '@/constants/brand';
 import ExploreSearch from '@/components/ExploreSearch';
 import { matchesCategory } from '@/lib/categories';
 import { normalizeAzPhone, isAzMobile, telUrl, whatsappUrl } from '@/lib/contact';
+import { metaEvents } from '@/lib/metaEvents';
 import { useAnnouncements, AnnouncementPopup, AnnouncementStrip } from '@/components/Announcements';
 
 interface Review {
@@ -873,12 +874,17 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
         }
     }, [filteredServices.length]);
 
+    // Latest cart for event reporting (state updaters must stay side-effect free).
+    const cartRef = React.useRef(cart);
+    useEffect(() => { cartRef.current = cart; }, [cart]);
     const toggleCart = useCallback((item: ServiceItem) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (!cartRef.current.some(c => c.id === item.id)) metaEvents.addToEstimate(item);
         setCart(prev => prev.some(c => c.id === item.id) ? prev.filter(c => c.id !== item.id) : [...prev, item]);
     }, []);
 
     const openDetail = (item: ServiceItem) => {
+        metaEvents.viewService(item);
         setSelectedItem(item);
         translateY.setValue(0);
         setDetailModalVisible(true);
@@ -1280,6 +1286,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                         }
                                         const success = await sendToTelegram(promo, items);
                                         if (success) {
+                                            metaEvents.submitOrder(items.reduce((sum, item) => sum + lineFinal(item, promo), 0), items.length);
                                             setCheckoutModalVisible(true);
                                         }
                                     }}
@@ -1350,6 +1357,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                 onOpenService={openDetail}
                 tagLabel={resolveTagLabel}
                 formatPrice={formatCurrency}
+                onSearch={metaEvents.search}
             />
 
             {/* DATE PICKER MODAL */}
@@ -1417,7 +1425,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                     };
                                     return (
                                         <View style={styles.contactRow}>
-                                            <TouchableOpacity style={styles.contactBtn} activeOpacity={0.8} onPress={() => open(telUrl(phone))}>
+                                            <TouchableOpacity style={styles.contactBtn} activeOpacity={0.8} onPress={() => { metaEvents.contact(selectedItem, 'call'); open(telUrl(phone)); }}>
                                                 <Feather name="phone" size={16} color={Brand.ink} />
                                                 <Text style={styles.contactBtnText} numberOfLines={1} allowFontScaling={false}>{t.callBtn}</Text>
                                             </TouchableOpacity>
@@ -1425,7 +1433,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                                 <TouchableOpacity
                                                     style={[styles.contactBtn, styles.contactWhatsappBtn]}
                                                     activeOpacity={0.8}
-                                                    onPress={() => open(whatsappUrl(phone, t.whatsappMsg.replace('{title}', selectedItem.title)))}
+                                                    onPress={() => { metaEvents.contact(selectedItem, 'whatsapp'); open(whatsappUrl(phone, t.whatsappMsg.replace('{title}', selectedItem.title))); }}
                                                 >
                                                     <FontAwesome name="whatsapp" size={17} color="#FFFFFF" />
                                                     <Text style={[styles.contactBtnText, { color: '#FFFFFF' }]} numberOfLines={1} allowFontScaling={false}>{t.whatsappBtn}</Text>

@@ -41,6 +41,8 @@ interface Props<T extends ExploreService> {
     onOpenService: (item: T) => void;
     tagLabel: (tag: string, lang: Lang) => string;
     formatPrice: (value: number) => string;
+    /** Called once per saved search term (for analytics). */
+    onSearch?: (term: string) => void;
 }
 
 const TEXT = {
@@ -108,7 +110,7 @@ const dailyOrder = <T extends ExploreService>(items: T[]): T[] => {
 const coverOf = (s: ExploreService) => s.images?.[0] || s.img;
 
 export default function ExploreSearch<T extends ExploreService>({
-    visible, onClose, services, lang, onOpenService, tagLabel, formatPrice,
+    visible, onClose, services, lang, onOpenService, tagLabel, formatPrice, onSearch,
 }: Props<T>) {
     const t = TEXT[lang];
     const insets = useSafeAreaInsets();
@@ -145,12 +147,13 @@ export default function ExploreSearch<T extends ExploreService>({
     const saveRecent = useCallback((term: string) => {
         const clean = term.trim();
         if (clean.length < 2) return;
+        onSearch?.(clean);
         setRecent(prev => {
             const next = [clean, ...prev.filter(r => fold(r) !== fold(clean))].slice(0, MAX_RECENT);
             AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next)).catch(() => {});
             return next;
         });
-    }, []);
+    }, [onSearch]);
 
     const removeRecent = useCallback((term: string) => {
         setRecent(prev => {
