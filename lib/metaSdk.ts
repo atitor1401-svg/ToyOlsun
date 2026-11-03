@@ -1,11 +1,13 @@
 import Constants from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
 import { AppState, Platform } from 'react-native';
 
 // Meta (Facebook) SDK is only used to report installs/app opens so Meta Ads
 // (Instagram app-install campaigns) can measure and optimise. Nothing here
 // may ever break the app: the native module doesn't exist in Expo Go or on
 // web, so it is only required in real builds, and every call is guarded.
-const isExpoGo = Constants.appOwnership === 'expo';
+// Constants.appOwnership is deprecated and no longer reliable on SDK 58.
+const isExpoGo = isRunningInExpoGo() || Constants.appOwnership === 'expo';
 const skipMeta = isExpoGo || Platform.OS === 'web';
 
 let started = false;
