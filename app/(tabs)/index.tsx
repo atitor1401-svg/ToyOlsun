@@ -145,7 +145,6 @@ const TRANSLATIONS = {
         searchPlaceholder: 'Zal, müğənni, fotoqraf axtar…',
         callBtn: 'Zəng et', whatsappBtn: 'WhatsApp',
         whatsappMsg: 'Salam! Toy Olsun tətbiqində "{title}" xidmətinizi gördüm. Ətraflı məlumat ala bilərəm?',
-        shareLinkIntro: 'Toy Olsun-da baxın:',
         shareLabel: 'Paylaş', catAll: 'Hamısı', catVenues: 'Zallar', catArtists: 'Artistlər', catDj: 'DJ',
         catMedia: 'Foto & Video', catCars: 'VIP Kortej',
         catWeddingDress: 'Gəlinlik', catFlowers: 'Gül Dükanı', catDecor: 'Dekor', catTourism: 'Bal Ayı',
@@ -226,7 +225,6 @@ const TRANSLATIONS = {
         searchPlaceholder: 'Найти зал, певца, фотографа…',
         callBtn: 'Позвонить', whatsappBtn: 'WhatsApp',
         whatsappMsg: 'Здравствуйте! Увидел(а) вашу услугу «{title}» в приложении Toy Olsun. Можно узнать подробнее?',
-        shareLinkIntro: 'Смотрите в Toy Olsun:',
         shareLabel: 'Поделиться', catAll: 'Все', catVenues: 'Залы', catArtists: 'Артисты', catDj: 'DJ',
         catMedia: 'Фото и Видео', catCars: 'VIP Кортеж',
         catWeddingDress: 'Свадебное платье', catFlowers: 'Цветочный магазин', catDecor: 'Декор', catTourism: 'Медовый месяц',
@@ -307,7 +305,6 @@ const TRANSLATIONS = {
         searchPlaceholder: 'Search venues, singers, photographers…',
         callBtn: 'Call', whatsappBtn: 'WhatsApp',
         whatsappMsg: 'Hello! I saw your service "{title}" on the Toy Olsun app. Could you tell me more?',
-        shareLinkIntro: 'See it on Toy Olsun:',
         shareLabel: 'Share', catAll: 'All', catVenues: 'Venues', catArtists: 'Artists', catDj: 'DJ',
         catMedia: 'Photo & Video', catCars: 'VIP Cortege',
         catWeddingDress: 'Wedding Dress', catFlowers: 'Flower Shop', catDecor: 'Decor', catTourism: 'Honeymoon',
@@ -907,16 +904,21 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
 
     const handleShare = async (item: ServiceItem) => {
         Haptics.selectionAsync();
-        // A normal https link, so WhatsApp and other messengers make it
-        // tappable. The page shows the service and opens it in the app if
-        // installed, otherwise offers the App Store / Google Play.
-        const link = `https://atitor1401-svg.github.io/ToyOlsun/xidmet.html?id=${encodeURIComponent(String(item.id))}`;
+        // WhatsApp (and most messengers) only auto-linkify standard http(s)
+        // URLs — a bare toyolsun:// scheme link shows as plain, untappable
+        // text. Store links are real https:// URLs so they're always
+        // tappable; we can't know the recipient's platform from the
+        // sender's device, so both are included and whoever taps the
+        // matching one lands on the right store.
+        const iosLink = 'https://apps.apple.com/app/id6808000909';
+        const androidLink = 'https://play.google.com/store/apps/details?id=com.ibo96.ToyOlsun';
         try {
             await Share.share({
                 message: `${item.title} — ${formatCurrency(item.price)} ${item.unit}
 
-${t.shareLinkIntro}
-${link}`,
+ToyOlsun tətbiqini yükləyin:
+iPhone: ${iosLink}
+Android: ${androidLink}`,
             });
         } catch {
             // User cancelled or share sheet failed to open — nothing to do
