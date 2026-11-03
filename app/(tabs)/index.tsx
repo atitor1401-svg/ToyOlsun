@@ -400,6 +400,18 @@ const formatCurrency = (val: number | null | undefined): string => {
     return safeVal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 };
 
+// YYYY-MM-DD in the phone's local time (toISOString would use UTC and can
+// land on the wrong day around midnight).
+const localDateString = (d: Date): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Start the planner a month ahead, so it never opens on a past date.
+const defaultEventDate = (): string => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return localDateString(d);
+};
+
 const calculateDaysLeft = (targetDateStr: string): number => {
     try {
         const today = new Date();
@@ -505,8 +517,8 @@ export default function LuxuryApp() {
     const [activeTab, setActiveTab] = useState<'catalog' | 'cart' | 'concierge'>('catalog');
     const [selectedCat, setSelectedCat] = useState<CategoryFilter>('all');
     const [guests, setGuests] = useState<string>('200');
-    const [eventDate, setEventDate] = useState<string>('2026-10-25');
-    const [selectedDate, setSelectedDate] = useState<string>('2026-10-25');
+    const [eventDate, setEventDate] = useState<string>(defaultEventDate);
+    const [selectedDate, setSelectedDate] = useState<string>(defaultEventDate);
     const [phone, setPhone] = useState<string>('+994 ');
     const [fullName, setFullName] = useState<string>('');
     const [privacyAccepted, setPrivacyAccepted] = useState<boolean>(false);
@@ -1288,6 +1300,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                     <TouchableOpacity activeOpacity={1} style={styles.datePickerModalContent}>
                         <Calendar
                             current={eventDate}
+                            minDate={localDateString(new Date())}
                             onDayPress={(day: { dateString: string }) => setSelectedDate(day.dateString)}
                             markedDates={{ [selectedDate]: { selected: true, selectedColor: '#2C2623' } }}
                             theme={{ selectedDayBackgroundColor: '#2C2623', todayTextColor: '#2C2623', arrowColor: '#2C2623' }}
