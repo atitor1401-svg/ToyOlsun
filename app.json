@@ -2,7 +2,7 @@
   "expo": {
     "name": "ToyOlsun",
     "slug": "ToyOlsun",
-    "version": "1.1.7",
+    "version": "1.1.8",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "toyolsun",
@@ -68,10 +68,20 @@
           "appID": "2633964793790634",
           "displayName": "ToyOlsun",
           "scheme": "fb2633964793790634",
-          "isAutoInitEnabled": false,
+          "isAutoInitEnabled": true,
           "autoLogAppEventsEnabled": true,
           "advertiserIDCollectionEnabled": true,
           "iosUserTrackingPermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "# Meta (Facebook) SDK loads these by class name at runtime. R8 removed them in 1.1.7,\n# so the app stopped sending installs and app opens to Meta Ads.\n-keep class com.facebook.** { *; }\n-dontwarn com.facebook.**\n-keep class com.android.installreferrer.** { *; }\n-keep class com.google.android.gms.ads.identifier.** { *; }\n-keep class com.google.android.gms.appset.** { *; }\n-dontwarn com.google.android.gms.**\n"
+          }
         }
       ],
       [
