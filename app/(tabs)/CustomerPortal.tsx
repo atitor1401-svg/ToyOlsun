@@ -5,6 +5,7 @@ import {
     KeyboardAvoidingView, Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { registerForPushNotificationsAsync, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
 import { AdBanner } from '@/components/AdBanner';
@@ -14,6 +15,9 @@ import { Feather } from '@expo/vector-icons';
 import { Colors as Brand } from '@/constants/brand';
 import type { Language } from './index';
 
+import { premiumStyles } from '@/lib/typography';
+import { scaled } from '@/lib/responsive';
+import AuthHero from '@/components/ui/AuthHero';
 // ---------- Simple client-side profanity filter ----------
 // The list is intentionally kept empty here; the user will supply the actual words.
 const BANNED_WORDS: string[] = [
@@ -328,6 +332,7 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={styles.authContainer} keyboardShouldPersistTaps="handled">
+                <AuthHero kicker={({ az: 'Şəxsi kabinet', ru: 'Личный кабинет', en: 'Your account' } as const)[lang]} subtitle={({ az: 'Sifarişləriniz, smetanız və rəyləriniz bir yerdə.', ru: 'Ваши заказы, смета и отзывы в одном месте.', en: 'Your orders, estimate and reviews in one place.' } as const)[lang]} />
                 <View style={styles.modeSwitcher}>
                     <TouchableOpacity style={[styles.modeTab, mode === 'login' && styles.modeTabActive]} onPress={() => { setMode('login'); setErrorMsg(''); }}>
                         <Text style={[styles.modeTabText, mode === 'login' && styles.modeTabTextActive]}>{t.login}</Text>
@@ -754,6 +759,10 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
 export default function CustomerPortal({ lang, visible, onClose }: { lang: Language; visible: boolean; onClose: () => void }) {
     const [session, setSession] = useState<any>(null);
     const [checking, setChecking] = useState(true);
+    // Android draws the modal edge-to-edge, so keep content clear of the
+    // status bar and the gesture/navigation bar. iOS keeps its old spacing.
+    const insets = useSafeAreaInsets();
+    const isAndroid = Platform.OS === 'android';
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data }) => {
@@ -768,9 +777,9 @@ export default function CustomerPortal({ lang, visible, onClose }: { lang: Langu
 
     return (
         <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-            <View style={{ flex: 1, backgroundColor: '#FAF8F5', paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
+            <View style={{ flex: 1, backgroundColor: '#F7F3EE', paddingTop: isAndroid ? insets.top + 8 : 50, paddingBottom: isAndroid ? insets.bottom : 0 }}>
                 {(!session || checking) && (
-                    <IconButton icon="x" onPress={onClose} style={styles.rootCloseBtn} />
+                    <IconButton icon="x" onPress={onClose} style={[styles.rootCloseBtn, isAndroid && { top: insets.top + 12 }]} />
                 )}
                 {checking ? (
                     <ActivityIndicator color="#D4AF37" style={{ marginTop: 60 }} />
@@ -784,20 +793,22 @@ export default function CustomerPortal({ lang, visible, onClose }: { lang: Langu
     );
 }
 
-const styles = StyleSheet.create({
-    authContainer: { padding: 20, paddingTop: 40 },
-    authTitle: { fontSize: 22, fontWeight: '700', color: '#2C2623', marginBottom: 24, textAlign: 'center' },
-    authSubtext: { fontSize: 13, color: '#6A625C', marginBottom: 16, lineHeight: 18 },
-    authError: { color: '#B0392C', fontSize: 12, marginTop: 10 },
-    switchText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textAlign: 'center' },
-    forgotText: { fontSize: 12, color: '#8A7E75', fontWeight: '600' },
-    modeSwitcher: { flexDirection: 'row', backgroundColor: '#EFECE6', borderRadius: 10, padding: 4, marginBottom: 10 },
-    modeTab: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-    modeTabActive: { backgroundColor: '#2C2623' },
-    modeTabText: { fontSize: 13, fontWeight: '700', color: '#8A7E75' },
-    modeTabTextActive: { color: '#D4AF37' },
-    inputLabel: { fontSize: 11, fontWeight: '700', color: '#6A625C', textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
-    input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EFECE6', borderRadius: 8, padding: 12, fontSize: 14, color: '#2C2623' },
+// Sign-in screens and the shared form fields shrink on small phones; other dashboard parts keep their sizes.
+const SCALED_STYLES = /^(auth|modeSwitcher|modeTab|inputLabel|input$|switchText|forgotText|partnerLabel|partnerInput|rootCloseBtn)/;
+const styles = StyleSheet.create(premiumStyles(scaled({
+    authContainer: { paddingHorizontal: 24, paddingTop: 36, paddingBottom: 40 },
+    authTitle: { fontSize: 32, fontFamily: 'Georgia', fontWeight: '600', color: '#1F1A17', marginBottom: 14, textAlign: 'center', lineHeight: 38 },
+    authSubtext: { fontSize: 13.5, color: '#7A6F66', marginBottom: 18, lineHeight: 20, textAlign: 'center' },
+    authError: { color: '#A6372B', fontSize: 12.5, marginTop: 12, backgroundColor: '#FBEDEA', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, overflow: 'hidden' },
+    switchText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textAlign: 'center', letterSpacing: 0.3 },
+    forgotText: { fontSize: 12.5, color: '#A8893E', fontWeight: '600' },
+    modeSwitcher: { flexDirection: 'row', backgroundColor: '#ECE6DE', borderRadius: 999, padding: 4, marginBottom: 14 },
+    modeTab: { flex: 1, paddingVertical: 11, borderRadius: 999, alignItems: 'center' },
+    modeTabActive: { backgroundColor: '#1F1A17', shadowColor: '#1F1A17', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+    modeTabText: { fontSize: 13, fontWeight: '600', color: '#8A7E75', letterSpacing: 0.4 },
+    modeTabTextActive: { color: '#E3C77A' },
+    inputLabel: { fontSize: 10.5, fontWeight: '600', color: '#8A7E75', textTransform: 'uppercase', letterSpacing: 1.4, marginBottom: 8, marginTop: 16 },
+    input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E6DFD5', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16, fontSize: 15, color: '#1F1A17' },
     primaryBtn: { backgroundColor: '#D4AF37', paddingVertical: 12, width: '100%', borderRadius: 8, alignItems: 'center' },
     primaryBtnText: { color: '#2C2623', fontWeight: '700', fontSize: 13, letterSpacing: 1 },
     secondaryBtn: { backgroundColor: '#EFECE6', paddingVertical: 12, borderRadius: 8 },
@@ -843,4 +854,4 @@ const styles = StyleSheet.create({
     likeIcon: { fontSize: 14 },
     likeIconActive: {},
     likeCount: { fontSize: 12, color: '#8A7E75', fontWeight: '600' },
-});
+}, key => SCALED_STYLES.test(key))));

@@ -19,6 +19,9 @@ import { Feather } from '@expo/vector-icons';
 import { Colors as Brand } from '@/constants/brand';
 import type { CategoryFilter, EventType, Language } from './index';
 
+import { premiumStyles } from '@/lib/typography';
+import { scaled } from '@/lib/responsive';
+import AuthHero from '@/components/ui/AuthHero';
 // ---------- Category tags (kept in sync with index.tsx) ----------
 const CATEGORY_TAGS: Record<string, { id: string; az: string; ru: string; en: string }[]> = {
     venues: [
@@ -562,6 +565,7 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={styles.authContainer} keyboardShouldPersistTaps="handled">
+                <AuthHero kicker={({ az: 'Partnyor kabineti', ru: 'Кабинет партнёра', en: 'Partner studio' } as const)[lang]} subtitle={({ az: 'Xidmətlərinizi minlərlə cütlüyə təqdim edin.', ru: 'Покажите свои услуги тысячам пар.', en: 'Present your services to thousands of couples.' } as const)[lang]} />
                 <View style={styles.authModeSwitcher}>
                     <TouchableOpacity
                         style={[styles.authModeTab, mode === 'login' && styles.authModeTabActive]}
@@ -1263,6 +1267,11 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
 export default function PartnerPortal({ lang, visible, onClose }: { lang: Language; visible: boolean; onClose: () => void }) {
     const [session, setSession] = useState<any>(null);
     const [checking, setChecking] = useState(true);
+    // Android draws the modal edge-to-edge: keep the sign-in screens clear of
+    // the status bar and the navigation bar (the dashboard handles its own).
+    const insets = useSafeAreaInsets();
+    const isAndroid = Platform.OS === 'android';
+    const onAuthScreens = !session || checking;
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data }) => {
@@ -1277,9 +1286,9 @@ export default function PartnerPortal({ lang, visible, onClose }: { lang: Langua
 
     return (
         <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-            <View style={{ flex: 1, backgroundColor: '#FAF8F5', paddingTop: Platform.OS === 'ios' ? 50 : (session && !checking ? 0 : 20) }}>
-                {(!session || checking) && (
-                    <IconButton icon="x" onPress={onClose} style={styles.rootCloseBtn} />
+            <View style={{ flex: 1, backgroundColor: '#F7F3EE', paddingTop: isAndroid ? (onAuthScreens ? insets.top + 8 : 0) : 50, paddingBottom: isAndroid && onAuthScreens ? insets.bottom : 0 }}>
+                {onAuthScreens && (
+                    <IconButton icon="x" onPress={onClose} style={[styles.rootCloseBtn, isAndroid && { top: insets.top + 12 }]} />
                 )}
                 {checking ? (
                     <ActivityIndicator color="#D4AF37" style={{ marginTop: 60 }} />
@@ -1293,21 +1302,23 @@ export default function PartnerPortal({ lang, visible, onClose }: { lang: Langua
     );
 }
 
-const styles = StyleSheet.create({
-    authContainer: { padding: 20, paddingTop: 40 },
-    authTitle: { fontSize: 22, fontWeight: '700', color: '#2C2623', marginBottom: 24, textAlign: 'center' },
-    authError: { color: '#B0392C', fontSize: 12, marginTop: 10 },
-    authSwitchText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textAlign: 'center' },
-    authSubtext: { fontSize: 13, color: '#6A625C', marginBottom: 16, lineHeight: 18 },
-    authForgotText: { fontSize: 12, color: '#8A7E75', fontWeight: '600' },
+// Sign-in screens and the shared form fields shrink on small phones; other dashboard parts keep their sizes.
+const SCALED_STYLES = /^(auth|modeSwitcher|modeTab|inputLabel|input$|switchText|forgotText|partnerLabel|partnerInput|rootCloseBtn)/;
+const styles = StyleSheet.create(premiumStyles(scaled({
+    authContainer: { paddingHorizontal: 24, paddingTop: 36, paddingBottom: 40 },
+    authTitle: { fontSize: 32, fontFamily: 'Georgia', fontWeight: '600', color: '#1F1A17', marginBottom: 14, textAlign: 'center', lineHeight: 38 },
+    authError: { color: '#A6372B', fontSize: 12.5, marginTop: 12, backgroundColor: '#FBEDEA', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, overflow: 'hidden' },
+    authSwitchText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textAlign: 'center', letterSpacing: 0.3 },
+    authSubtext: { fontSize: 13.5, color: '#7A6F66', marginBottom: 18, lineHeight: 20, textAlign: 'center' },
+    authForgotText: { fontSize: 12.5, color: '#A8893E', fontWeight: '600' },
     partnerSuccessCheck: { fontSize: 40, color: '#D4AF37', fontWeight: '700', marginBottom: 10 },
-    authModeSwitcher: { flexDirection: 'row', backgroundColor: '#EFECE6', borderRadius: 10, padding: 4, marginBottom: 10 },
-    authModeTab: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-    authModeTabActive: { backgroundColor: '#2C2623' },
-    authModeTabText: { fontSize: 13, fontWeight: '700', color: '#8A7E75' },
-    authModeTabTextActive: { color: '#D4AF37' },
-    partnerLabel: { fontSize: 11, fontWeight: '700', color: '#6A625C', textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
-    partnerInput: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EFECE6', borderRadius: 8, padding: 12, fontSize: 14, color: '#2C2623' },
+    authModeSwitcher: { flexDirection: 'row', backgroundColor: '#ECE6DE', borderRadius: 999, padding: 4, marginBottom: 14 },
+    authModeTab: { flex: 1, paddingVertical: 11, borderRadius: 999, alignItems: 'center' },
+    authModeTabActive: { backgroundColor: '#1F1A17', shadowColor: '#1F1A17', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+    authModeTabText: { fontSize: 13, fontWeight: '600', color: '#8A7E75', letterSpacing: 0.4 },
+    authModeTabTextActive: { color: '#E3C77A' },
+    partnerLabel: { fontSize: 10.5, fontWeight: '600', color: '#8A7E75', textTransform: 'uppercase', letterSpacing: 1.4, marginBottom: 8, marginTop: 16 },
+    partnerInput: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E6DFD5', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16, fontSize: 15, color: '#1F1A17' },
     partnerCatRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     partnerCatChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EFECE6' },
     partnerCatChipActive: { backgroundColor: '#2C2623', borderColor: '#2C2623' },
@@ -1379,4 +1390,4 @@ const styles = StyleSheet.create({
     confirmBox: { width: '100%', maxWidth: 340, backgroundColor: '#FFF', borderRadius: 16, padding: 20 },
     confirmTitle: { fontSize: 16, fontWeight: '700', color: '#2C2623', marginBottom: 8 },
     confirmMsg: { fontSize: 13, color: '#6A625C', lineHeight: 18 },
-});
+}, key => SCALED_STYLES.test(key))));

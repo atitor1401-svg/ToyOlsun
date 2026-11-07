@@ -13,10 +13,11 @@ import { sendOrderToTelegram, flushPendingOrderTelegrams } from '../../lib/order
 import { useWindowDimensions, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Calendar } from 'react-native-calendars';
 import PartnerPortal from './PartnerPortal';
 import CustomerPortal, { ServiceReviews } from './CustomerPortal';
-import { Feather, FontAwesome } from '@expo/vector-icons';
+import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Colors as Brand } from '@/constants/brand';
@@ -24,8 +25,29 @@ import ExploreSearch from '@/components/ExploreSearch';
 import { matchesCategory } from '@/lib/categories';
 import { normalizeAzPhone, isAzMobile, telUrl, whatsappUrl } from '@/lib/contact';
 import { metaEvents } from '@/lib/metaEvents';
-import { useAnnouncements, AnnouncementPopup, AnnouncementStrip } from '@/components/Announcements';
+import { useAnnouncements, AnnouncementStrip } from '@/components/Announcements';
+import Stories from '@/components/Stories';
+import { useFavorites } from '@/lib/favorites';
+import { useRememberedCovers } from '@/lib/coverCache';
 
+// Welcome-card photos built into the app: shown on a first launch without
+// internet, before any photo has been loaded from the server.
+const BUNDLED_COVERS = {
+    wedding: require('@/assets/images/covers/wedding.jpg'),
+    khyna: require('@/assets/images/covers/khyna.jpg'),
+    birthday: require('@/assets/images/covers/birthday.jpg'),
+} as const;
+import SmetaHero from '@/components/smeta/SmetaHero';
+import SmetaPlan from '@/components/smeta/SmetaPlan';
+import SmetaLine from '@/components/smeta/SmetaLine';
+import SmetaEmpty from '@/components/smeta/SmetaEmpty';
+import SmetaStickyBar from '@/components/smeta/SmetaStickyBar';
+import { SMETA_TEXT } from '@/components/smeta/smetaText';
+import Toast, { type ToastMessage } from '@/components/ui/Toast';
+import { planFor, type PlanCategory, type PlanStep } from '@/components/smeta/plan';
+
+import { premiumStyles } from '@/lib/typography';
+import { scaled, isShortScreen } from '@/lib/responsive';
 interface Review {
   id: string;
   service_id: string;
@@ -538,6 +560,13 @@ export default function LuxuryApp() {
     const [selectedEventType, setSelectedEventType] = useState<EventType | null>(null);
     const [activeTab, setActiveTab] = useState<'catalog' | 'cart' | 'concierge'>('catalog');
     const [selectedCat, setSelectedCat] = useState<CategoryFilter>('all');
+    const favorites = useFavorites();
+    const [showFavorites, setShowFavorites] = useState(false);
+    const favText = {
+        az: { chip: 'Seçilmişlər', emptyTitle: 'Hələ seçilmiş yoxdur', emptySub: 'Bəyəndiyiniz xidmətin ürəyinə toxunun, burada saxlanacaq.' },
+        ru: { chip: 'Избранное', emptyTitle: 'Пока пусто', emptySub: 'Нажмите на сердечко у понравившейся услуги, и она сохранится здесь.' },
+        en: { chip: 'Saved', emptyTitle: 'Nothing saved yet', emptySub: 'Tap the heart on any service you like and it will be kept here.' },
+    }[lang];
     const [guests, setGuests] = useState<string>('200');
     const [eventDate, setEventDate] = useState<string>(defaultEventDate);
     const [selectedDate, setSelectedDate] = useState<string>(defaultEventDate);
@@ -844,6 +873,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
     const filteredServices = useMemo(() => {
         return services.filter(item => {
             if (selectedEventType && !item.event_type?.includes(selectedEventType)) return false;
+            if (showFavorites) return favorites.ids.includes(String(item.id));
             if (!matchesCategory(item, selectedCat)) return false;
             const min = parseFloat(minPrice), max = parseFloat(maxPrice);
             if (!isNaN(min) && item.price < min) return false;
@@ -854,7 +884,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
             if (sortBy === 'desc') return b.price - a.price;
             return parseFloat(b.rating || '0') - parseFloat(a.rating || '0');
         });
-    }, [services, selectedEventType, selectedCat, minPrice, maxPrice, sortBy]);
+    }, [services, selectedEventType, selectedCat, minPrice, maxPrice, sortBy, showFavorites, favorites.ids]);
 
     // Explore search covers every service for the chosen event type; it has
     // its own category chips and ignores the catalog's price filter.
@@ -890,6 +920,30 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
         setDetailModalVisible(true);
     };
 
+    // Welcome-screen card photos: the best-rated service photo for each event
+    // type (our own catalog content), so the cards always show real venues.
+    const liveEventCovers = useMemo(() => {
+        const pick = (type: EventType, cats: CategoryFilter[]): string | undefined => {
+            // A photo chosen by the team (Supabase app_announcements, style 'cover') wins.
+            if (announcements.covers[type]) return announcements.covers[type];
+            const pool = services
+                .filter(s => s.event_type?.includes(type) && (s.images?.[0] || s.img))
+                .sort((a, b) => parseFloat(b.rating || '0') - parseFloat(a.rating || '0'));
+            for (const c of cats) {
+                const best = pool.find(s => s.category === c);
+                if (best) return best.images?.[0] || best.img;
+            }
+            return pool[0]?.images?.[0] || pool[0]?.img;
+        };
+        return {
+            wedding: pick('wedding', ['venues', 'wedding_dress', 'media']),
+            khyna: pick('khyna', ['decor', 'flowers', 'venues']),
+            birthday: pick('birthday', ['venues', 'decor', 'artists']),
+        } as Record<EventType, string | undefined>;
+    }, [services, announcements.covers]);
+    // Falls back to the last photos seen, so the cards keep pictures offline.
+    const eventCovers = useRememberedCovers(liveEventCovers);
+
     // Actions behind in-app banners (Supabase app_announcements).
     const CATEGORY_IDS: CategoryFilter[] = ['venues', 'artists', 'dj', 'media', 'cars', 'wedding_dress', 'flowers', 'decor', 'tourism'];
     const announcementHandlers = {
@@ -906,6 +960,55 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
             setExploreVisible(false);
             setSelectedCat(category as CategoryFilter);
         },
+    };
+
+    // ---- Estimate (smeta) screen ----
+    const smetaText = SMETA_TEXT[lang];
+    const smetaScrollRef = React.useRef<React.ComponentRef<typeof ScrollView>>(null);
+    const smetaViewportH = React.useRef(0);
+    const smetaContentH = React.useRef(0);
+    const smetaOffsetY = React.useRef(0);
+    // True once the bottom total card is on screen; the sticky bar then hides.
+    const [smetaAtEnd, setSmetaAtEnd] = useState(false);
+    const updateSmetaAtEnd = () => {
+        const TOTAL_CARD_ZONE = 260;
+        setSmetaAtEnd(smetaOffsetY.current + smetaViewportH.current >= smetaContentH.current - TOTAL_CARD_ZONE);
+    };
+    const categoryLabels: Record<PlanCategory, string> = {
+        venues: t.catVenues, artists: t.catArtists, dj: t.catDj, media: t.catMedia, cars: t.catCars,
+        wedding_dress: t.catWeddingDress, flowers: t.catFlowers, decor: t.catDecor, tourism: t.catTourism,
+    };
+    const planLabel = (step: PlanStep) => categoryLabels[step.category];
+    const smetaSteps = planFor(selectedEventType);
+    const eventTitle = selectedEventType
+        ? { wedding: t.weddingTitle, khyna: t.khynaTitle, birthday: t.birthdayTitle }[selectedEventType]
+        : t.defaultTitle;
+    const perGuestText = parsedGuests > 0 && cart.length > 0 ? `${formatCurrency(Math.round(totalEstimate / parsedGuests))} AZN` : null;
+    // Send checks: what is still missing before the estimate can go to the manager.
+    // A full Azerbaijani number is 12 digits with the 994 prefix.
+    const missingName = !fullName.trim();
+    const missingPhone = phone.replace(/\D/g, '').length < 12;
+    const missingConsent = !privacyAccepted;
+    const [triedSend, setTriedSend] = useState(false); // highlight empty fields only after a send attempt
+    const [smetaToast, setSmetaToast] = useState<ToastMessage | null>(null);
+    const contactCardY = React.useRef(0);
+    const warnMissingDetails = () => {
+        setTriedSend(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setSmetaToast({
+            id: Date.now(),
+            title: smetaText.missingTitle,
+            body: [missingName && smetaText.missingName, missingPhone && smetaText.missingPhone, missingConsent && smetaText.missingConsent]
+                .filter(Boolean)
+                .join(' · '),
+        });
+        smetaScrollRef.current?.scrollTo({ y: Math.max(contactCardY.current - 12, 0), animated: true });
+    };
+    const openCatalogCategory = (category: PlanCategory) => {
+        setActiveTab('catalog');
+        setExploreVisible(false);
+        setShowFavorites(false);
+        setSelectedCat(category);
     };
 
     const handleShare = async (item: ServiceItem) => {
@@ -967,30 +1070,52 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
         return (
             <SafeAreaView style={styles.welcomeContainer}>
                 <StatusBar barStyle="dark-content" />
+                <ScrollView contentContainerStyle={styles.welcomeScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.langSelectorContainer}>
                     {(['az', 'ru', 'en'] as Language[]).map(l => (
-                        <TouchableOpacity key={l} style={[styles.langBtn, lang === l && styles.langBtnActive]} onPress={() => { Haptics.selectionAsync(); setLang(l); }}>
+                        <TouchableOpacity key={l} style={styles.langBtn} onPress={() => { Haptics.selectionAsync(); setLang(l); }} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
                             <Text style={[styles.langBtnText, lang === l && styles.langBtnTextActive]} allowFontScaling={false} maxFontSizeMultiplier={1}>{l.toUpperCase()}</Text>
+                            <View style={[styles.langUnderline, lang === l && styles.langUnderlineActive]} />
                         </TouchableOpacity>
                     ))}
                 </View>
                 <View style={styles.welcomeHeader}>
-                    <Text style={styles.brandBadge} allowFontScaling={false} maxFontSizeMultiplier={1}>CONCIERGE & ATELIER</Text>
-                    <Text style={styles.brandTitle}>TOY OLSUN</Text>
-                    <View style={styles.headerDivider} />
-                    <Text style={styles.welcomeSub}>{t.welcomeSub}</Text>
+                    <Text style={styles.welcomeKicker} allowFontScaling={false} maxFontSizeMultiplier={1}>CONCIERGE & ATELIER</Text>
+                    <Text style={styles.welcomeTitle} maxFontSizeMultiplier={1.1}>Toy Olsun</Text>
+                    <View style={styles.ornament}>
+                        <View style={styles.ornamentLine} />
+                        <View style={styles.ornamentDiamond} />
+                        <View style={styles.ornamentLine} />
+                    </View>
+                    <Text style={styles.welcomeSub} maxFontSizeMultiplier={1.1}>{t.welcomeSub}</Text>
                 </View>
                 <View style={styles.eventCardsContainer}>
                     {[
-                        { type: 'wedding', icon: '💍', title: t.wedding, desc: t.weddingDesc },
-                        { type: 'khyna', icon: '🌹', title: t.khyna, desc: t.khynaDesc },
-                        { type: 'birthday', icon: '🎉', title: t.birthday, desc: t.birthdayDesc },
-                    ].map(item => (
-                        <TouchableOpacity key={item.type} style={styles.eventTypeCard} activeOpacity={0.8} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectedEventType(item.type as EventType); }}>
-                            <Text style={styles.eventTypeIcon}>{item.icon}</Text>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.eventTypeName}>{item.title}</Text>
-                                <Text style={styles.eventTypeDesc}>{item.desc}</Text>
+                        { type: 'wedding' as EventType, title: t.wedding, desc: t.weddingDesc },
+                        { type: 'khyna' as EventType, title: t.khyna, desc: t.khynaDesc },
+                        { type: 'birthday' as EventType, title: t.birthday, desc: t.birthdayDesc },
+                    ].map((item, idx) => (
+                        <TouchableOpacity key={item.type} style={styles.eventTypeCard} activeOpacity={0.88} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectedEventType(item.type); }}>
+                            <Image
+                                source={eventCovers[item.type] ? { uri: eventCovers[item.type] } : BUNDLED_COVERS[item.type]}
+                                style={StyleSheet.absoluteFill}
+                                contentFit="cover"
+                                transition={400}
+                                cachePolicy="memory-disk"
+                            />
+                            <LinearGradient
+                                colors={['rgba(24,20,18,0.05)', 'rgba(24,20,18,0.55)', 'rgba(24,20,18,0.92)']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 0.9, y: 1 }}
+                                style={StyleSheet.absoluteFill}
+                            />
+                            <View style={styles.eventTypeContent}>
+                                <Text style={styles.eventTypeIndex} allowFontScaling={false}>{`0${idx + 1}`}</Text>
+                                <Text style={styles.eventTypeName} numberOfLines={1} maxFontSizeMultiplier={1.1}>{item.title}</Text>
+                                <Text style={styles.eventTypeDesc} numberOfLines={isShortScreen ? 1 : 2} maxFontSizeMultiplier={1.1}>{item.desc}</Text>
+                            </View>
+                            <View style={styles.eventTypeArrow}>
+                                <Feather name="arrow-up-right" size={18} color="#1F1A17" />
                             </View>
                         </TouchableOpacity>
                     ))}
@@ -1008,6 +1133,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                 {!partnerLoggedIn && (
                     <Text style={styles.partnerContactHint} maxFontSizeMultiplier={1.15}>{t.partnerContactHint}</Text>
                 )}
+                </ScrollView>
                 <PartnerPortal lang={lang} visible={showPartnerPortal} onClose={() => setShowPartnerPortal(false)} />
                 <CustomerPortal lang={lang} visible={showCustomerPortal} onClose={() => setShowCustomerPortal(false)} />
             </SafeAreaView>
@@ -1049,15 +1175,27 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
 
                     <AnnouncementStrip {...announcementHandlers} item={announcements.strip} onDone={announcements.markSeen} />
 
+                    <Stories
+                        lang={lang}
+                        services={services as any}
+                        announcements={announcements.storyItems}
+                        onOpenService={announcementHandlers.onOpenService}
+                        onSelectCategory={announcementHandlers.onSelectCategory}
+                    />
+
                     <TouchableOpacity style={styles.searchPill} activeOpacity={0.8} onPress={() => { Haptics.selectionAsync(); setExploreVisible(true); }}>
                         <Feather name="search" size={17} color={Brand.textMuted} />
                         <Text style={styles.searchPillText} numberOfLines={1} maxFontSizeMultiplier={1.2}>{t.searchPlaceholder}</Text>
                     </TouchableOpacity>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
+                        <TouchableOpacity style={[styles.chip, styles.favChip, showFavorites && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setShowFavorites(v => !v); }}>
+                            <Feather name="heart" size={13} color={showFavorites ? Brand.white : Brand.gold} />
+                            <Text style={[styles.chipText, showFavorites && styles.activeChipText]} allowFontScaling={false} maxFontSizeMultiplier={1}>{favText.chip}{favorites.ids.length ? ` ${favorites.ids.length}` : ''}</Text>
+                        </TouchableOpacity>
                         {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'dj', name: t.catDj }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }, { id: 'wedding_dress', name: t.catWeddingDress }, { id: 'flowers', name: t.catFlowers }, { id: 'decor', name: t.catDecor }, { id: 'tourism', name: t.catTourism }].map(f => (
-                            <TouchableOpacity key={f.id} style={[styles.chip, selectedCat === f.id && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setSelectedCat(f.id as CategoryFilter); }}>
-                                <Text style={[styles.chipText, selectedCat === f.id && styles.activeChipText]} allowFontScaling={false} maxFontSizeMultiplier={1}>{f.name}</Text>
+                            <TouchableOpacity key={f.id} style={[styles.chip, !showFavorites && selectedCat === f.id && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setShowFavorites(false); setSelectedCat(f.id as CategoryFilter); }}>
+                                <Text style={[styles.chipText, !showFavorites && selectedCat === f.id && styles.activeChipText]} allowFontScaling={false} maxFontSizeMultiplier={1}>{f.name}</Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -1098,8 +1236,9 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                         </View>
                     ) : filteredServices.length === 0 ? (
                         <View style={styles.emptyBox}>
-                            <Text style={styles.emptyTitle}>{t.noResultsTitle}</Text>
-                            <Text style={styles.emptySub}>{t.noResultsDesc}</Text>
+                            {showFavorites && <Feather name="heart" size={28} color={Brand.gold} style={{ marginBottom: 10 }} />}
+                            <Text style={styles.emptyTitle}>{showFavorites ? favText.emptyTitle : t.noResultsTitle}</Text>
+                            <Text style={styles.emptySub}>{showFavorites ? favText.emptySub : t.noResultsDesc}</Text>
                         </View>
                     ) : filteredServices.slice(0, visibleCount).map(item => {
                         const inCart = cart.some(c => c.id === item.id);
@@ -1121,6 +1260,13 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                     <TouchableOpacity style={styles.shareBtn} onPress={() => handleShare(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                                         <Feather name="send" size={16} color={Brand.ink} />
                                         <Text style={styles.shareBtnText} allowFontScaling={false} maxFontSizeMultiplier={1} numberOfLines={1}>{t.shareLabel}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.favBtn, favorites.isFavorite(item.id) && styles.favBtnActive]}
+                                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); favorites.toggle(item.id); }}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <Ionicons name={favorites.isFavorite(item.id) ? 'heart' : 'heart-outline'} size={18} color={favorites.isFavorite(item.id) ? '#C2453D' : Brand.ink} />
                                     </TouchableOpacity>
                                 </View>
                                 <View style={styles.cardBody}>
@@ -1171,36 +1317,45 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
             )}
 
             {activeTab === 'cart' && (
-                <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    <Text style={styles.sectionHeading}>{t.calcTitle}</Text>
-                    <Text style={styles.cartSub}>{formattedDate} • {parsedGuests} {t.guestsCount}</Text>
+                <View style={styles.scrollArea}>
+                <ScrollView
+                    ref={smetaScrollRef}
+                    style={styles.scrollArea}
+                    contentContainerStyle={[styles.scrollContent, cart.length > 0 && styles.smetaScrollContent]}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    scrollEventThrottle={64}
+                    onLayout={e => { smetaViewportH.current = e.nativeEvent.layout.height; updateSmetaAtEnd(); }}
+                    onContentSizeChange={(_w, h) => { smetaContentH.current = h; updateSmetaAtEnd(); }}
+                    onScroll={e => { smetaOffsetY.current = e.nativeEvent.contentOffset.y; updateSmetaAtEnd(); }}
+                >
+                    <SmetaHero lang={lang} eventTitle={eventTitle} date={formattedDate} guests={parsedGuests} daysLeft={daysLeft} />
                     {cart.length === 0 ? (
-                        <View style={styles.emptyBox}>
-                            <Text style={styles.emptyTitle}>{t.emptyCartTitle}</Text>
-                            <Text style={styles.emptySub}>{t.emptyCartSub}</Text>
-                        </View>
+                        <SmetaEmpty lang={lang} steps={smetaSteps} labelFor={planLabel} onStart={openCatalogCategory} />
                     ) : (
                         <>
+                            <SmetaPlan lang={lang} steps={smetaSteps} cart={cart} labelFor={planLabel} onAdd={openCatalogCategory} />
                             {cart.map(item => {
-                                const itemTotal = lineFinal(item);
                                 const itemPromo = promoPercentFor(item);
                                 return (
-                                    <View key={item.id} style={styles.cartItem}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.cartItemTitle}>{item.title}</Text>
-                                            <Text style={styles.cartItemSub}>{item.category === 'venues' ? `${item.price} AZN × ${parsedGuests} ${t.guestUnit}` : item.unit}</Text>
-                                            {itemPromo > 0 && <Text style={styles.cartItemPromo}>{appliedPromo?.code} −{itemPromo}%</Text>}
-                                        </View>
-                                        <Text style={styles.cartItemPrice}>{formatCurrency(itemTotal)} AZN</Text>
-                                        <IconButton icon="x" size={28} onPress={() => toggleCart(item)} style={styles.removeBtn} />
-                                    </View>
+                                    <SmetaLine
+                                        key={item.id}
+                                        photo={item.images?.[0] || item.img}
+                                        category={categoryLabels[item.category as PlanCategory] ?? ''}
+                                        title={item.title}
+                                        detail={item.category === 'venues' ? `${item.price} AZN × ${parsedGuests} ${t.guestUnit}` : item.unit}
+                                        promo={itemPromo > 0 ? `${appliedPromo?.code} −${itemPromo}%` : undefined}
+                                        price={`${formatCurrency(lineFinal(item))} AZN`}
+                                        onPress={() => openDetail(item)}
+                                        onRemove={() => toggleCart(item)}
+                                    />
                                 );
                             })}
-                            <View style={styles.contactCard}>
+                            <View style={styles.contactCard} onLayout={e => { contactCardY.current = e.nativeEvent.layout.y; }}>
                                 <Text style={styles.contactHeader}>{t.contactPhone}</Text>
-                                <TextInput style={[styles.phoneInput, { marginBottom: 10 }]} placeholder="+994 (50) 000-00-00" placeholderTextColor="#A0968E" keyboardType="phone-pad" value={phone}
+                                <TextInput style={[styles.phoneInput, { marginBottom: 10 }, triedSend && missingPhone && styles.inputMissing]} placeholder="+994 (50) 000-00-00" placeholderTextColor="#A0968E" keyboardType="phone-pad" value={phone}
                                     onChangeText={(text) => { if (!text.startsWith('+994 ')) setPhone('+994 '); else setPhone(text); }} />
-                                <TextInput style={styles.phoneInput} placeholder="Ad və Soyad" placeholderTextColor="#A0968E" value={fullName} onChangeText={setFullName} />
+                                <TextInput style={[styles.phoneInput, triedSend && missingName && styles.inputMissing]} placeholder="Ad və Soyad" placeholderTextColor="#A0968E" value={fullName} onChangeText={setFullName} />
                             </View>
                             <View style={[styles.contactCard, { marginTop: 0 }]}>
                                 <Text style={styles.contactHeader}>{t.promoTitle}</Text>
@@ -1243,7 +1398,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                             >
                                 <View style={{ 
                                     width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, 
-                                    borderColor: privacyAccepted ? '#D4AF37' : '#8A7E75', 
+                                    borderColor: privacyAccepted ? '#D4AF37' : triedSend ? '#C2453D' : '#8A7E75', 
                                     backgroundColor: privacyAccepted ? '#D4AF37' : 'transparent',
                                     justifyContent: 'center', alignItems: 'center', marginRight: 8 
                                 }}>
@@ -1262,6 +1417,9 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                             <View style={styles.totalCard}>
                                 <Text style={styles.totalTitle}>{t.totalEstimate}</Text>
                                 <Text style={styles.totalAmount}>{formatCurrency(totalEstimate)} AZN</Text>
+                                {perGuestText && (
+                                    <Text style={styles.totalPerGuest}>{smetaText.perGuest} ≈ {perGuestText}</Text>
+                                )}
                                 {promoSavings > 0 && (
                                     <Text style={styles.totalSavings}>{t.promoSaved}: −{formatCurrency(promoSavings)} AZN</Text>
                                 )}
@@ -1272,7 +1430,8 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                     loading={submitting}
                                     style={{ marginTop: 6 }}
                                     onPress={async () => {
-                                        if (!fullName.trim() || phone.trim() === '+994' || !privacyAccepted) {
+                                        if (missingName || missingPhone || missingConsent) {
+                                            warnMissingDetails();
                                             return;
                                         }
                                         if (submitting || promoChecking) return;
@@ -1295,6 +1454,16 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                         </>
                     )}
                 </ScrollView>
+                <SmetaStickyBar
+                    lang={lang}
+                    visible={cart.length > 0 && !smetaAtEnd}
+                    total={`${formatCurrency(totalEstimate)} AZN`}
+                    perGuest={perGuestText}
+                    count={cart.length}
+                    onPress={() => smetaScrollRef.current?.scrollToEnd({ animated: true })}
+                />
+                <Toast toast={smetaToast} onHide={() => setSmetaToast(null)} />
+                </View>
             )}
 
             {activeTab === 'concierge' && (
@@ -1343,10 +1512,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                 </TouchableOpacity>
             </View>
 
-            {/* IN-APP INFO BANNER (popup), not on top of another sheet */}
-            {!detailModalVisible && !checkoutModalVisible && !exploreVisible && (
-                <AnnouncementPopup {...announcementHandlers} item={announcements.popup} onDone={announcements.markSeen} />
-            )}
+            {/* 'popup' banners now live in the Stories row above the catalog */}
 
             {/* INSTAGRAM-STYLE EXPLORE SEARCH (overlay; the detail modal opens on top of it) */}
             <ExploreSearch
@@ -1502,36 +1668,49 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
     );
 }
 
-const styles = StyleSheet.create({
+// New premium sections shrink on small phones; older parts keep their sizes.
+const SCALED_STYLES = /^(welcome|lang|ornament|eventType|eventCards|partnerLinkWelcome|myAccountBtnWelcome|customerLinkWelcome|partnerContactHint|total|contact|phoneInput|smeta|fav)/;
+const styles = StyleSheet.create(premiumStyles(scaled({
     container: { flex: 1, backgroundColor: '#FAF8F5' },
-    welcomeContainer: { flex: 1, backgroundColor: '#FAF8F5', justifyContent: 'center', paddingHorizontal: 20 },
-    langSelectorContainer: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20 },
-    langBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, backgroundColor: '#EFECE6', minWidth: 50, alignItems: 'center', justifyContent: 'center' },
-    langBtnActive: { backgroundColor: '#2C2623' },
-    langBtnText: { fontSize: 12, fontWeight: '700', color: '#6A625C' },
-    langBtnTextActive: { color: '#FFF' },
-    welcomeHeader: { alignItems: 'center', marginBottom: 30 },
+    welcomeContainer: { flex: 1, backgroundColor: '#F7F3EE' },
+    welcomeScroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 22, paddingVertical: isShortScreen ? 10 : 24 },
+    langSelectorContainer: { flexDirection: 'row', justifyContent: 'center', gap: 22, marginBottom: isShortScreen ? 12 : 28 },
+    langBtn: { alignItems: 'center', minWidth: 28 },
+    langBtnActive: {},
+    langBtnText: { fontSize: 12, fontWeight: '500', color: '#A39A92', letterSpacing: 1.5 },
+    langUnderline: { marginTop: 5, height: 1.5, width: 14, backgroundColor: 'transparent' },
+    langUnderlineActive: { backgroundColor: '#C9A44C' },
+    langBtnTextActive: { color: '#1F1A17', fontWeight: '700' },
+    welcomeHeader: { alignItems: 'center', marginBottom: isShortScreen ? 14 : 28 },
+    welcomeKicker: { fontSize: 10, color: '#B08F3E', fontWeight: '600', letterSpacing: 4, marginBottom: 8 },
+    welcomeTitle: { fontSize: isShortScreen ? 40 : 48, fontFamily: FONTS.serif, fontWeight: '600', color: '#1F1A17', letterSpacing: 0.5, lineHeight: isShortScreen ? 46 : 54 },
+    ornament: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: isShortScreen ? 8 : 12 },
+    ornamentLine: { width: 36, height: 1, backgroundColor: '#C9A44C' },
+    ornamentDiamond: { width: 6, height: 6, backgroundColor: '#C9A44C', transform: [{ rotate: '45deg' }] },
     brandBadge: { fontSize: 11, color: '#8A7E75', fontWeight: '700', textTransform: 'uppercase', marginBottom: 4 },
     brandTitle: { fontSize: 26, fontFamily: FONTS.serif, fontWeight: '700', color: '#2C2623', letterSpacing: 1 },
     headerDivider: { width: 40, height: 2, backgroundColor: '#D4AF37', marginVertical: 10 },
-    welcomeSub: { fontSize: 12, letterSpacing: 1.5, color: '#6A625C', fontWeight: '600' },
-    eventCardsContainer: { gap: 14 },
-    eventTypeCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 18, borderRadius: 16, borderWidth: 1, borderColor: '#EFECE6', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
-    eventTypeIcon: { fontSize: 28, marginRight: 16 },
-    eventTypeName: { fontSize: 16, fontWeight: '700', color: '#2C2623', marginBottom: 4 },
-    eventTypeDesc: { fontSize: 12, color: '#8A7E75' },
+    welcomeSub: { fontSize: 11, letterSpacing: 2.5, color: '#7A6F67', fontWeight: '500' },
+    eventCardsContainer: { flex: 1, gap: isShortScreen ? 10 : 14, justifyContent: 'center' },
+    eventTypeCard: { flex: 1, minHeight: isShortScreen ? 84 : 120, maxHeight: 148, borderRadius: 22, overflow: 'hidden', backgroundColor: '#2A2421', justifyContent: 'flex-end', shadowColor: '#1F1A17', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 6 },
+    eventTypeContent: { paddingHorizontal: 20, paddingBottom: isShortScreen ? 12 : 18, paddingRight: 72 },
+    eventTypeIndex: { fontSize: 11, color: '#E3C77A', fontWeight: '600', letterSpacing: 2, marginBottom: 4 },
+    eventTypeArrow: { position: 'absolute', right: 18, bottom: isShortScreen ? 14 : 20, width: 40, height: 40, borderRadius: 20, backgroundColor: '#E3C77A', alignItems: 'center', justifyContent: 'center' },
+    eventTypeIcon: { fontSize: 28 },
+    eventTypeName: { fontSize: isShortScreen ? 24 : 28, fontFamily: FONTS.serif, fontWeight: '600', color: '#FFFFFF', marginBottom: 2, lineHeight: isShortScreen ? 28 : 32 },
+    eventTypeDesc: { fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 17 },
     topHeader: { alignItems: 'center', paddingTop: 10, paddingBottom: 12, backgroundColor: '#FAF8F5', borderBottomWidth: 1, borderBottomColor: '#EFECE6', position: 'relative' },
     changeEventBtn: { position: 'absolute', left: 16, top: 12, minWidth: 80 },
     changeEventText: { fontSize: 14, color: '#8A7E75', fontWeight: '600' },
     partnerBtn: { position: 'absolute', right: 16, top: 12, backgroundColor: '#2C2623', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 14 },
     partnerBtnText: { fontSize: 12, color: '#D4AF37', fontWeight: '700' },
-    partnerLinkWelcome: { alignSelf: 'center', marginTop: 22, paddingVertical: 8, paddingHorizontal: 6 },
-    partnerLinkWelcomeText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textDecorationLine: 'underline' },
-        myAccountBtnWelcome: { alignSelf: 'center', marginTop: 22, backgroundColor: '#2C2623', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20 },
-    myAccountBtnWelcomeText: { fontSize: 13, color: '#D4AF37', fontWeight: '700' },
-    customerLinkWelcome: { alignSelf: 'center', marginTop: 12, paddingVertical: 8, paddingHorizontal: 6 },
-    customerLinkWelcomeText: { fontSize: 13, color: '#8A7E75', fontWeight: '600', textDecorationLine: 'underline' },
-    partnerContactHint: { alignSelf: 'center', marginTop: 10, fontSize: 11, color: '#B8AEA5', textAlign: 'center', paddingHorizontal: 12 },
+    partnerLinkWelcome: { alignSelf: 'stretch', marginTop: isShortScreen ? 14 : 24, paddingVertical: isShortScreen ? 12 : 14, borderRadius: 999, borderWidth: 1, borderColor: '#1F1A17', alignItems: 'center' },
+    partnerLinkWelcomeText: { fontSize: 13, color: '#1F1A17', fontWeight: '600', letterSpacing: 0.5 },
+    myAccountBtnWelcome: { alignSelf: 'stretch', marginTop: isShortScreen ? 14 : 24, backgroundColor: '#1F1A17', paddingVertical: isShortScreen ? 12 : 14, borderRadius: 999, alignItems: 'center' },
+    myAccountBtnWelcomeText: { fontSize: 13, color: '#E3C77A', fontWeight: '700', letterSpacing: 0.5 },
+    customerLinkWelcome: { alignSelf: 'stretch', marginTop: isShortScreen ? 8 : 10, paddingVertical: isShortScreen ? 12 : 14, borderRadius: 999, backgroundColor: '#1F1A17', alignItems: 'center' },
+    customerLinkWelcomeText: { fontSize: 13, color: '#F7F3EE', fontWeight: '600', letterSpacing: 0.5 },
+    partnerContactHint: { alignSelf: 'center', marginTop: isShortScreen ? 8 : 16, fontSize: 11, color: '#A39A92', textAlign: 'center', paddingHorizontal: 12, lineHeight: 16 },
     partnerFormSub: { fontSize: 12, color: '#8A7E75', marginBottom: 18, lineHeight: 17 },
     partnerLabel: { fontSize: 11, fontWeight: '700', color: '#6A625C', textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
     partnerInput: { backgroundColor: '#FAF8F5', borderWidth: 1, borderColor: '#EFECE6', borderRadius: 8, padding: 12, fontSize: 14, color: '#2C2623' },
@@ -1596,7 +1775,10 @@ const styles = StyleSheet.create({
     cardRating: { color: '#D4AF37', fontSize: 12, fontWeight: '700' },
     cardBody: { padding: 14 },
     cardTitle: { fontSize: 16, fontWeight: '700', color: '#2C2623', marginBottom: 8 },
-    cardActionRow: { flexDirection: 'row', paddingHorizontal: 14, paddingTop: 10 },
+    cardActionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 10 },
+    favBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.white },
+    favBtnActive: { borderColor: '#F0C9C5', backgroundColor: '#FDF1EF' },
+    favChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     shareBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.white },
     shareBtnText: { fontSize: 13, fontWeight: '600', color: Brand.ink },
     tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
@@ -1633,15 +1815,18 @@ const styles = StyleSheet.create({
     promoRemoveText: { fontSize: 12, color: '#8A7E75', textDecorationLine: 'underline' },
     promoHint: { fontSize: 11, color: '#8A7E75', marginTop: 6 },
     promoErrorText: { fontSize: 12, color: '#B0392C', marginTop: 6 },
-    totalSavings: { color: '#D4AF37', fontSize: 12, fontWeight: '600', marginBottom: 6 },
+    totalSavings: { color: '#E3C77A', fontSize: 12.5, fontWeight: '600', marginBottom: 8 },
     cartItemPrice: { fontSize: 14, fontWeight: '700', color: '#2C2623', marginRight: 12 },
     removeBtn: { padding: 4 },
-    contactCard: { backgroundColor: '#FFF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#EFECE6', marginTop: 10, marginBottom: 16 },
-    contactHeader: { fontSize: 12, fontWeight: '700', color: '#2C2623', marginBottom: 10, textTransform: 'uppercase' },
-    phoneInput: { backgroundColor: '#FAF8F5', borderWidth: 1, borderColor: '#EFECE6', borderRadius: 8, padding: 12, fontSize: 14, color: '#2C2623' },
-    totalCard: { backgroundColor: '#2C2623', padding: 20, borderRadius: 16, alignItems: 'center' },
-    totalTitle: { color: '#A0968E', fontSize: 11, textTransform: 'uppercase' },
-    totalAmount: { color: '#D4AF37', fontSize: 24, fontWeight: '700', marginVertical: 8 },
+    contactCard: { backgroundColor: '#FFF', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: '#EDE6DC', marginTop: 8, marginBottom: 14 },
+    contactHeader: { fontSize: 10.5, fontWeight: '600', color: '#A8893E', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1.6 },
+    phoneInput: { backgroundColor: '#FBF8F3', borderWidth: 1, borderColor: '#E6DFD5', borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, fontSize: 15, color: '#1F1A17' },
+    smetaScrollContent: { paddingBottom: 120 },
+    inputMissing: { borderColor: '#C2453D', backgroundColor: '#FDF4F2' },
+    totalPerGuest: { color: 'rgba(251,247,240,0.7)', fontSize: 12.5, marginBottom: 10 },
+    totalCard: { backgroundColor: '#1F1A17', paddingVertical: 24, paddingHorizontal: 20, borderRadius: 22, alignItems: 'center' },
+    totalTitle: { color: 'rgba(251,247,240,0.6)', fontSize: 10.5, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 2 },
+    totalAmount: { color: '#E3C77A', fontSize: 36, fontFamily: 'Georgia', fontWeight: '700', marginTop: 6, marginBottom: 4 },
     checkoutBtn: { backgroundColor: '#D4AF37', paddingVertical: 12, width: '100%', borderRadius: 8, alignItems: 'center', marginTop: 6 },
     checkoutBtnText: { color: '#2C2623', fontWeight: '700', fontSize: 13, letterSpacing: 1 },
     conciergeCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#EFECE6', marginBottom: 20, alignItems: 'center' },
@@ -1698,4 +1883,4 @@ const styles = StyleSheet.create({
     primaryBtnText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
     secondaryBtn: { backgroundColor: '#EFECE6', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
     secondaryBtnText: { color: '#2C2623', fontWeight: '600', fontSize: 13 },
-});
+}, key => SCALED_STYLES.test(key))));

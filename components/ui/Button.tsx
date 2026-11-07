@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, TouchableOpacity
 import { Feather } from '@expo/vector-icons';
 import { Colors, Radius, Spacing } from '@/constants/brand';
 
+import { premiumStyles } from '@/lib/typography';
 type Variant = 'primary' | 'gold' | 'secondary' | 'ghost' | 'danger';
 type Size = 'md' | 'sm';
 
@@ -65,7 +66,7 @@ export function Button({
     );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(premiumStyles({
     base: {
         borderRadius: Radius.sm,
         alignItems: 'center',
@@ -100,4 +101,4 @@ const styles = StyleSheet.create({
     labelSm: {
         fontSize: 13,
     },
-});
+}));

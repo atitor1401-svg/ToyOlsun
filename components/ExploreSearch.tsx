@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors as Brand } from '@/constants/brand';
 import { matchesCategory } from '@/lib/categories';
 
+import { premiumStyles } from '@/lib/typography';
 type Lang = 'az' | 'ru' | 'en';
 
 export interface ExploreService {
@@ -276,7 +277,7 @@ export default function ExploreSearch<T extends ExploreService>({
                 style={styles.tileImg}
                 contentFit="cover"
                 transition={150}
-                recyclingKey={item.id}
+                recyclingKey={String(item.id)}
                 cachePolicy="memory-disk"
             />
             {(item.images?.length || 0) > 1 && (
@@ -479,7 +480,7 @@ export default function ExploreSearch<T extends ExploreService>({
                     }
                     renderItem={({ item }) => (
                         <TouchableOpacity style={styles.resultRow} activeOpacity={0.7} onPress={() => open(item)}>
-                            <Image source={{ uri: coverOf(item) }} style={styles.resultThumb} contentFit="cover" recyclingKey={item.id} cachePolicy="memory-disk" />
+                            <Image source={{ uri: coverOf(item) }} style={styles.resultThumb} contentFit="cover" recyclingKey={String(item.id)} cachePolicy="memory-disk" />
                             <View style={styles.resultBody}>
                                 {highlight(item.title)}
                                 <Text style={styles.resultSub} numberOfLines={1} maxFontSizeMultiplier={1.2}>
@@ -509,7 +510,7 @@ export default function ExploreSearch<T extends ExploreService>({
     );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(premiumStyles({
     overlay: { backgroundColor: Brand.cream, zIndex: 50, elevation: 50 },
     row: { flexDirection: 'row' },
 
@@ -567,4 +568,4 @@ const styles = StyleSheet.create({
     empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
     emptyTitle: { fontSize: 16, fontWeight: '700', color: Brand.ink, marginTop: 12 },
     emptySub: { fontSize: 14, color: Brand.textMuted, marginTop: 6, textAlign: 'center' },
-});
+}));

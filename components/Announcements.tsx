@@ -1,9 +1,11 @@
 // In-app information banners managed from Supabase (table app_announcements).
 // - 'popup': a card shown once when the catalog opens.
 // - 'strip': a slim, dismissible bar above the catalog.
+// - 'cover': the photo of a welcome-screen card; action_value is the event
+//   ('wedding' | 'khyna' | 'birthday'), image_url is the photo.
 // Each banner is shown once per phone; dismissed ids are kept in AsyncStorage.
 // Any failure (no table yet, offline) simply shows nothing.
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
@@ -12,11 +14,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { Colors as Brand } from '@/constants/brand';
 
+import { premiumStyles } from '@/lib/typography';
 type Lang = 'az' | 'ru' | 'en';
 
 interface Announcement {
     id: number;
-    style: 'popup' | 'strip';
+    style: 'popup' | 'strip' | 'cover';
     priority: number;
     title_az: string; title_ru: string | null; title_en: string | null;
     body_az: string | null; body_ru: string | null; body_en: string | null;
@@ -67,13 +70,28 @@ export function useAnnouncements() {
         });
     }, []);
 
+    // Team-chosen welcome card photos, by event ('wedding', 'khyna', 'birthday').
+    // The highest priority row wins (items are already sorted by priority).
+    const covers = useMemo(() => items.reduce<Record<string, string>>((acc, a) => {
+        const event = (a.action_value || '').trim();
+        if (a.style === 'cover' && a.image_url && event && !acc[event]) acc[event] = a.image_url;
+        return acc;
+    }, {}), [items]);
+
     const unseen = seen ? items.filter(a => !seen.includes(a.id)) : [];
     return {
         popup: unseen.find(a => a.style === 'popup') || null,
         strip: unseen.find(a => a.style === 'strip') || null,
+        // 'popup' banners are now shown as Stories (always available, never
+        // blocking the screen); 'strip' banners stay as the slim bar.
+        storyItems: items.filter(a => a.style === 'popup'),
+        covers,
         markSeen,
     };
 }
+
+export type { Announcement };
+export const pickAnnouncementText = (a: Announcement, field: 'title' | 'body' | 'button', lang: Lang) => pick(a, field, lang);
 
 const runAction = (a: Announcement, props: Props, delayForModal: boolean) => {
     const value = (a.action_value || '').trim();
@@ -150,7 +168,7 @@ export function AnnouncementStrip(props: Props & { item: Announcement | null; on
     );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(premiumStyles({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
     card: { width: '100%', maxWidth: 380, backgroundColor: Brand.white, borderRadius: 20, overflow: 'hidden' },
     image: { width: '100%', aspectRatio: 16 / 10, backgroundColor: Brand.border },
@@ -171,4 +189,4 @@ const styles = StyleSheet.create({
     stripMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 11 },
     stripText: { flex: 1, fontSize: 14, color: Brand.ink, fontWeight: '600' },
     stripClose: { paddingHorizontal: 12, paddingVertical: 11 },
-});
+}));

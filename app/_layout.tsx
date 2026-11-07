@@ -7,7 +7,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initMetaSdk } from '@/lib/metaSdk';
 import * as Sentry from '@sentry/react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { fontAssets } from '@/lib/typography';
+
+// Keep the splash screen up until the premium fonts are ready, so text
+// doesn't jump from the system font to the real one on first frame.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 Sentry.init({
   dsn: 'https://83214329125c99254d7f8a563e3deaaa@o4512069923307520.ingest.de.sentry.io/4512069926912080',
@@ -34,10 +41,22 @@ export const unstable_settings = {
 
 export default Sentry.wrap(function RootLayout() {
   const colorScheme = useColorScheme();
+  const [fontsLoaded, fontError] = useFonts(fontAssets);
+  // Never block the app on fonts: after 3 s show it with system fonts.
+  const [fontTimeout, setFontTimeout] = useState(false);
+  const ready = fontsLoaded || !!fontError || fontTimeout;
 
   useEffect(() => {
     initMetaSdk();
+    const timer = setTimeout(() => setFontTimeout(true), 3000);
+    return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
+
+  if (!ready) return null;
 
     return (
     <SafeAreaProvider>

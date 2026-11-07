@@ -3,6 +3,7 @@ import { StyleSheet, TouchableOpacity, TouchableOpacityProps } from 'react-nativ
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/brand';
 
+import { premiumStyles } from '@/lib/typography';
 interface IconButtonProps extends TouchableOpacityProps {
     icon: keyof typeof Feather.glyphMap;
     size?: number;
@@ -31,9 +32,9 @@ export function IconButton({ icon, size = 34, variant = 'light', iconColor, styl
     );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(premiumStyles({
     base: {
         alignItems: 'center',
         justifyContent: 'center',
     },
-});
+}));
