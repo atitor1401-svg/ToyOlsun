@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { metaEvents } from '@/lib/metaEvents';
 import { supabase } from '../../lib/supabase';
 import { registerForPushNotificationsAsync, sendLocalTestNotification, getNotificationPermissionStatus } from '../../lib/notifications';
 import { AdBanner } from '@/components/AdBanner';
@@ -218,6 +219,7 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
                 type: 'signup',
             });
             if (error) throw error;
+            metaEvents.completeRegistration('customer');
 
             // Now that we have a session, create the profile row
             const { data: userData } = await supabase.auth.getUser();

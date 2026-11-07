@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { metaEvents } from '@/lib/metaEvents';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -413,6 +414,7 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
                 type: 'signup',
             });
             if (error) throw error;
+            metaEvents.completeRegistration('partner');
 
             const { data: userData } = await supabase.auth.getUser();
             const uid = userData?.user?.id;
