@@ -23,6 +23,13 @@ import type { CategoryFilter, EventType, Language } from './index';
 import { premiumStyles } from '@/lib/typography';
 import { scaled } from '@/lib/responsive';
 import AuthHero from '@/components/ui/AuthHero';
+import SocialSignIn from '@/components/auth/SocialSignIn';
+import { getAppleCodeForDeletion, signOutGoogle } from '@/lib/socialAuth';
+import { useUnreadCount } from '@/lib/chat';
+import ConversationList from '@/components/chat/ConversationList';
+import { CHAT_TEXT } from '@/components/chat/chatText';
+import PartnerStats from '@/components/partner/PartnerStats';
+import BusyDaysEditor from '@/components/calendar/BusyDaysEditor';
 // ---------- Category tags (kept in sync with index.tsx) ----------
 const CATEGORY_TAGS: Record<string, { id: string; az: string; ru: string; en: string }[]> = {
     venues: [
@@ -648,6 +655,8 @@ function AuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () => void }
                     style={{ marginTop: 18 }}
                 />
 
+                <SocialSignIn lang={lang} role="partner" disabled={loading} onAuthed={onAuthed} />
+
                 <AdBanner />
             </ScrollView>
         </KeyboardAvoidingView>
@@ -923,7 +932,10 @@ function ServiceForm({
 function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () => void; onClose: () => void }) {
     const insets = useSafeAreaInsets();
     const t = PORTAL_TEXT[lang];
-    const [activeTab, setActiveTab] = useState<'services' | 'orders'>('services');
+    const [activeTab, setActiveTab] = useState<'services' | 'orders' | 'messages'>('services');
+    const [userId, setUserId] = useState<string | null>(null);
+    useEffect(() => { supabase.auth.getUser().then(({ data }) => setUserId(data?.user?.id ?? null)); }, []);
+    const unreadMessages = useUnreadCount('partner', userId);
     const [services, setServices] = useState<PartnerService[]>([]);
     const [orders, setOrders] = useState<PartnerOrder[]>([]);
     const [ordersLoading, setOrdersLoading] = useState(true);
@@ -1034,11 +1046,16 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
     const handleDeleteAccount = async () => {
         setDeletingAccount(true);
         try {
-            const { data, error } = await supabase.functions.invoke('smooth-responder');
+            const apple = await getAppleCodeForDeletion();
+            if (apple.cancelled) { setDeletingAccount(false); return; }
+            const { data, error } = await supabase.functions.invoke('smooth-responder', {
+                body: apple.code ? { appleAuthorizationCode: apple.code } : {},
+            });
             console.log('Delete account response:', JSON.stringify({ data, error }, null, 2));
             if (error) throw error;
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             await supabase.auth.signOut();
+            await signOutGoogle();
             onLogout();
         } catch (e: any) {
             console.error('Delete account error:', e);
@@ -1077,13 +1094,13 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
     return (
         <View style={{ flex: 1 }}>
             <View style={[styles.dashHeader, Platform.OS === 'android' && { paddingTop: insets.top + 12 }]}>
-                <Text style={styles.dashTitle}>{activeTab === 'services' ? t.myServices : t.myOrders}</Text>
+                <Text style={styles.dashTitle}>{activeTab === 'services' ? t.myServices : activeTab === 'orders' ? t.myOrders : CHAT_TEXT[lang].messages}</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                     <IconButton icon="settings" onPress={() => setShowAccountSettings(true)} />
                     <IconButton icon="log-out" onPress={() => {
                         Alert.alert(t.logout, t.logoutConfirmMsg, [
                             { text: t.logoutNo, style: 'cancel' },
-                            { text: t.logoutYes, style: 'destructive', onPress: async () => { await supabase.auth.signOut(); onLogout(); } },
+                            { text: t.logoutYes, style: 'destructive', onPress: async () => { await supabase.auth.signOut(); await signOutGoogle(); onLogout(); } },
                         ]);
                     }} />
                     <IconButton icon="x" onPress={onClose} />
@@ -1101,6 +1118,16 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                     {newOrdersCount > 0 && (
                         <View style={styles.badgeContainer}>
                             <Text style={styles.badgeText}>{newOrdersCount}</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.dashTab, activeTab === 'messages' && styles.dashTabActive]} onPress={() => setActiveTab('messages')}>
+                    <Text style={[styles.dashTabText, activeTab === 'messages' && styles.dashTabTextActive]}>
+                        {CHAT_TEXT[lang].messages}
+                    </Text>
+                    {unreadMessages > 0 && (
+                        <View style={styles.badgeContainer}>
+                            <Text style={styles.badgeText}>{unreadMessages > 99 ? '99+' : unreadMessages}</Text>
                         </View>
                     )}
                 </TouchableOpacity>
@@ -1151,6 +1178,16 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                             </View>
                         ))
                     )}
+                    {!loading && services.length > 0 && (
+                        <>
+                            <PartnerStats lang={lang} refreshKey={services.length} />
+                            <BusyDaysEditor lang={lang} services={services.filter(s => s.status === 'approved').map(s => ({ id: s.id, title: s.title }))} />
+                        </>
+                    )}
+                </ScrollView>
+            ) : activeTab === 'messages' ? (
+                <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+                    {userId ? <ConversationList role="partner" userId={userId} lang={lang} showTitle={false} /> : <ActivityIndicator color="#D4AF37" style={{ marginTop: 30 }} />}
                 </ScrollView>
             ) : (
                 <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>

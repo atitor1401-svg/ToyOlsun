@@ -13,6 +13,13 @@ import { AdBanner } from '@/components/AdBanner';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Feather } from '@expo/vector-icons';
+import { getAppleCodeForDeletion, signOutGoogle } from '@/lib/socialAuth';
+import SocialSignIn from '@/components/auth/SocialSignIn';
+import ConversationList from '@/components/chat/ConversationList';
+import { CHAT_TEXT } from '@/components/chat/chatText';
+import { useUnreadCount } from '@/lib/chat';
+import { MAX_REVIEW_PHOTOS, pickAndUploadReviewPhotos } from '@/lib/reviewPhotos';
+import { Image } from 'expo-image';
 import { Colors as Brand } from '@/constants/brand';
 import type { Language } from './index';
 
@@ -231,6 +238,9 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
                     full_name: fullName.trim(),
                     phone: phone.trim(),
                 });
+                // The home screen checked the role before this row existed and
+                // took the new user for a partner; a token refresh makes it look again.
+                await supabase.auth.refreshSession();
             }
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -397,6 +407,8 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
                     style={{ marginTop: 18 }}
                 />
 
+                <SocialSignIn lang={lang} role="customer" disabled={loading} onAuthed={onAuthed} />
+
                 <AdBanner />
             </ScrollView>
         </KeyboardAvoidingView>
@@ -408,6 +420,10 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
 // ============================================================
 function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () => void; onClose: () => void }) {
     const t = CUSTOMER_TEXT[lang];
+    const [userId, setUserId] = useState<string | null>(null);
+    useEffect(() => { supabase.auth.getUser().then(({ data }) => setUserId(data?.user?.id ?? null)); }, []);
+    const [tab, setTab] = useState<'orders' | 'messages'>('orders');
+    const unreadMessages = useUnreadCount('customer', userId);
     const [orders, setOrders] = useState<CustomerOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
@@ -468,10 +484,15 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
     const handleDeleteAccount = async () => {
         setDeletingAccount(true);
         try {
-            const { data, error } = await supabase.functions.invoke('smooth-responder');
+            const apple = await getAppleCodeForDeletion();
+            if (apple.cancelled) { setDeletingAccount(false); return; }
+            const { data, error } = await supabase.functions.invoke('smooth-responder', {
+                body: apple.code ? { appleAuthorizationCode: apple.code } : {},
+            });
             if (error) throw error;
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             await supabase.auth.signOut();
+            await signOutGoogle();
             onLogout();
         } catch (e) {
             console.error('Delete account error:', e);
@@ -484,14 +505,14 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
     const handleLogoutPress = () => {
         Alert.alert(t.logoutConfirmTitle, t.logoutConfirmMsg, [
             { text: t.logoutNo, style: 'cancel' },
-            { text: t.logoutYes, style: 'destructive', onPress: async () => { await supabase.auth.signOut(); onLogout(); } },
+            { text: t.logoutYes, style: 'destructive', onPress: async () => { await supabase.auth.signOut(); await signOutGoogle(); onLogout(); } },
         ]);
     };
 
     return (
         <View style={{ flex: 1 }}>
             <View style={styles.dashHeader}>
-                <Text style={styles.dashTitle}>{t.myOrders}</Text>
+                <Text style={styles.dashTitle}>{tab === 'orders' ? t.myOrders : CHAT_TEXT[lang].messages}</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                     <IconButton icon="settings" onPress={() => setShowSettings(true)} />
                     <IconButton icon="log-out" onPress={handleLogoutPress} />
@@ -499,6 +520,25 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
                 </View>
             </View>
 
+            <View style={styles.dashTabRow}>
+                <TouchableOpacity style={[styles.dashTab, tab === 'orders' && styles.dashTabActive]} onPress={() => setTab('orders')}>
+                    <Text style={[styles.dashTabText, tab === 'orders' && styles.dashTabTextActive]}>{t.myOrders}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.dashTab, tab === 'messages' && styles.dashTabActive]} onPress={() => setTab('messages')}>
+                    <Text style={[styles.dashTabText, tab === 'messages' && styles.dashTabTextActive]}>{CHAT_TEXT[lang].messages}</Text>
+                    {unreadMessages > 0 && (
+                        <View style={styles.badgeContainer}>
+                            <Text style={styles.badgeText}>{unreadMessages > 99 ? '99+' : unreadMessages}</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+            </View>
+
+            {tab === 'messages' ? (
+                <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+                    {userId ? <ConversationList role="customer" userId={userId} lang={lang} showTitle={false} /> : <ActivityIndicator color="#D4AF37" style={{ marginTop: 30 }} />}
+                </ScrollView>
+            ) : (
             <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
                 {loading ? (
                     <ActivityIndicator color="#D4AF37" style={{ marginTop: 30 }} />
@@ -535,6 +575,7 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
                     ))
                 )}
             </ScrollView>
+            )}
 
             <Modal visible={!!cancelTarget} transparent animationType="fade" onRequestClose={() => setCancelTarget(null)}>
                 <View style={styles.modalOverlay}>
@@ -600,6 +641,7 @@ interface ReviewItem {
     created_at: string;
     like_count: number;
     liked_by_me: boolean;
+    images?: string[];
 }
 
 export function ServiceReviews({ serviceId, lang }: { serviceId: string | number; lang: Language }) {
@@ -610,6 +652,23 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
     const [submitting, setSubmitting] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState('');
+    const [photos, setPhotos] = useState<string[]>([]);
+    const [uploadingPhotos, setUploadingPhotos] = useState(false);
+    const [viewer, setViewer] = useState<string | null>(null);
+
+    const handleAddPhotos = async () => {
+        setErrorMsg('');
+        if (!userId) { setErrorMsg(t.loginRequiredForReview); return; }
+        setUploadingPhotos(true);
+        try {
+            const urls = await pickAndUploadReviewPhotos(userId, photos.length);
+            if (urls.length) setPhotos(prev => [...prev, ...urls].slice(0, MAX_REVIEW_PHOTOS));
+        } catch {
+            setErrorMsg(t.authError);
+        } finally {
+            setUploadingPhotos(false);
+        }
+    };
 
     const loadReviews = useCallback(async () => {
         setLoading(true);
@@ -619,7 +678,7 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
 
         const { data: reviewRows } = await supabase
             .from('customer_reviews')
-            .select('id, customer_id, customer_name, comment, created_at')
+            .select('*') // '*' so older databases without the images column still work
             .eq('service_id', serviceId)
             .order('created_at', { ascending: false });
 
@@ -658,9 +717,11 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
                 customer_id: userId,
                 customer_name: profileData?.full_name || 'İstifadəçi',
                 comment: newComment.trim(),
+                ...(photos.length ? { images: photos } : {}),
             });
             if (error) throw error;
             setNewComment('');
+            setPhotos([]);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             loadReviews();
         } catch (e) {
@@ -726,6 +787,21 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
                 />
                 <Button label={t.reviewSubmit} variant="gold" size="sm" loading={submitting} onPress={handleSubmitReview} style={styles.reviewSubmitBtn} />
             </View>
+            <View style={styles.photoRow}>
+                {photos.map(uri => (
+                    <View key={uri}>
+                        <Image source={{ uri }} style={styles.photoThumb} contentFit="cover" />
+                        <TouchableOpacity style={styles.photoRemove} onPress={() => setPhotos(prev => prev.filter(p => p !== uri))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                            <Feather name="x" size={12} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+                ))}
+                {photos.length < MAX_REVIEW_PHOTOS && (
+                    <TouchableOpacity style={styles.photoAdd} onPress={handleAddPhotos} disabled={uploadingPhotos}>
+                        {uploadingPhotos ? <ActivityIndicator color="#D4AF37" size="small" /> : <Feather name="camera" size={18} color={Brand.textMuted} />}
+                    </TouchableOpacity>
+                )}
+            </View>
             {errorMsg ? <Text style={styles.authError}>{errorMsg}</Text> : null}
 
             {loading ? (
@@ -744,6 +820,15 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
                             )}
                         </View>
                         <Text style={styles.reviewComment}>{r.comment}</Text>
+                        {!!r.images?.length && (
+                            <View style={styles.photoRow}>
+                                {r.images.map(uri => (
+                                    <TouchableOpacity key={uri} onPress={() => setViewer(uri)} activeOpacity={0.85}>
+                                        <Image source={{ uri }} style={styles.photoThumb} contentFit="cover" />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
                         <TouchableOpacity style={styles.likeRow} onPress={() => handleToggleLike(r)} disabled={!userId}>
                             <Feather name="heart" size={15} color={r.liked_by_me ? Brand.danger : Brand.textPlaceholder} />
                             <Text style={styles.likeCount}>{r.like_count}</Text>
@@ -751,6 +836,11 @@ export function ServiceReviews({ serviceId, lang }: { serviceId: string | number
                     </View>
                 ))
             )}
+            <Modal visible={!!viewer} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
+                <TouchableOpacity style={styles.viewerOverlay} activeOpacity={1} onPress={() => setViewer(null)}>
+                    {viewer && <Image source={{ uri: viewer }} style={styles.viewerImg} contentFit="contain" />}
+                </TouchableOpacity>
+            </Modal>
         </View>
     );
 }
@@ -848,6 +938,19 @@ const styles = StyleSheet.create(premiumStyles(scaled({
     reviewSubmitBtn: { backgroundColor: '#D4AF37', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 8, justifyContent: 'center' },
     reviewSubmitBtnText: { color: '#2C2623', fontWeight: '700', fontSize: 12 },
     noReviewsText: { fontSize: 12, color: '#8A7E75', marginTop: 12, textAlign: 'center' },
+    photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+    photoThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#EFECE6' },
+    photoRemove: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: '#2C2623', alignItems: 'center', justifyContent: 'center' },
+    photoAdd: { width: 64, height: 64, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: '#CFC5BB', alignItems: 'center', justifyContent: 'center' },
+    viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },
+    viewerImg: { width: '100%', height: '80%' },
+    dashTabRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
+    dashTab: { flex: 1, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, backgroundColor: '#EFECE6', alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
+    dashTabActive: { backgroundColor: '#2C2623' },
+    dashTabText: { fontSize: 12, fontWeight: '700', color: '#6A625C' },
+    dashTabTextActive: { color: '#D4AF37' },
+    badgeContainer: { backgroundColor: '#E53E3E', borderRadius: 10, minWidth: 18, height: 18, paddingHorizontal: 4, marginLeft: 4, justifyContent: 'center', alignItems: 'center' },
+    badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold', textAlign: 'center' },
     reviewCard: { backgroundColor: '#FFF', borderRadius: 12, borderWidth: 1, borderColor: '#EFECE6', padding: 12, marginTop: 10 },
     reviewAuthor: { fontSize: 13, fontWeight: '700', color: '#2C2623' },
     reviewDeleteText: { fontSize: 11, color: '#B0392C', fontWeight: '600' },

@@ -28,6 +28,16 @@ import { metaEvents } from '@/lib/metaEvents';
 import { useAnnouncements, AnnouncementStrip } from '@/components/Announcements';
 import Stories from '@/components/Stories';
 import { useFavorites } from '@/lib/favorites';
+import { logServiceEvent } from '@/lib/serviceEvents';
+import { useVerifiedServices } from '@/lib/badges';
+import { CHECKLIST, useWeddingPlan } from '@/lib/weddingPlan';
+import { fetchServicesBusyOn } from '@/lib/availability';
+import { startConversation } from '@/lib/chat';
+import { shareEstimatePdf } from '@/lib/estimatePdf';
+import ChecklistModal from '@/components/planner/ChecklistModal';
+import AvailabilityView from '@/components/calendar/AvailabilityView';
+import { useCalendarLocale } from '@/components/calendar/calendarLocale';
+import ChatThread from '@/components/chat/ChatThread';
 import { useRememberedCovers } from '@/lib/coverCache';
 
 // Welcome-card photos built into the app: shown on a first launch without
@@ -567,6 +577,20 @@ export default function LuxuryApp() {
         ru: { chip: 'Избранное', emptyTitle: 'Пока пусто', emptySub: 'Нажмите на сердечко у понравившейся услуги, и она сохранится здесь.' },
         en: { chip: 'Saved', emptyTitle: 'Nothing saved yet', emptySub: 'Tap the heart on any service you like and it will be kept here.' },
     }[lang];
+    const growthText = {
+        az: { freeOnDate: 'Tariximdə boş', prep: 'Hazırlıq', verified: 'Təsdiqlənib', writeToPartner: 'Partnyora yaz', pdf: 'PDF kimi paylaş', pdfFailed: 'PDF hazırlanmadı' },
+        ru: { freeOnDate: 'Свободны в мою дату', prep: 'Подготовка', verified: 'Проверено', writeToPartner: 'Написать партнёру', pdf: 'Поделиться PDF', pdfFailed: 'Не удалось создать PDF' },
+        en: { freeOnDate: 'Free on my date', prep: 'Prep', verified: 'Verified', writeToPartner: 'Message the partner', pdf: 'Share as PDF', pdfFailed: 'Could not create the PDF' },
+    }[lang];
+    useCalendarLocale(lang);
+    const verifiedIds = useVerifiedServices();
+    const weddingPlan = useWeddingPlan();
+    const [checklistVisible, setChecklistVisible] = useState(false);
+    const [freeOnDateOnly, setFreeOnDateOnly] = useState(false);
+    const [busyOnEventDate, setBusyOnEventDate] = useState<Set<string>>(new Set());
+    const [chat, setChat] = useState<{ id: number; title: string; userId: string } | null>(null);
+    const [chatOpening, setChatOpening] = useState(false);
+    const [pdfBusy, setPdfBusy] = useState(false);
     const [guests, setGuests] = useState<string>('200');
     const [eventDate, setEventDate] = useState<string>(defaultEventDate);
     const [selectedDate, setSelectedDate] = useState<string>(defaultEventDate);
@@ -723,6 +747,22 @@ const { data, error } = await Promise.race([
         fetchReviewSummaries();
     }, []);
 
+    // The wedding date saved on the phone / in the account becomes the event date.
+    useEffect(() => {
+        if (weddingPlan.ready && weddingPlan.weddingDate) {
+            setEventDate(weddingPlan.weddingDate);
+            setSelectedDate(weddingPlan.weddingDate);
+        }
+    }, [weddingPlan.ready, weddingPlan.weddingDate]);
+
+    // Services already booked on the chosen date (for the "free on my date" chip).
+    useEffect(() => {
+        if (!freeOnDateOnly || !eventDate) return;
+        let alive = true;
+        fetchServicesBusyOn(eventDate).then(ids => { if (alive) setBusyOnEventDate(ids); });
+        return () => { alive = false; };
+    }, [freeOnDateOnly, eventDate]);
+
     const daysLeft = useMemo(() => calculateDaysLeft(eventDate), [eventDate]);
     const formattedDate = useMemo(() => {
         if (!eventDate) return 'Tarix seçin';
@@ -875,6 +915,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
             if (selectedEventType && !item.event_type?.includes(selectedEventType)) return false;
             if (showFavorites) return favorites.ids.includes(String(item.id));
             if (!matchesCategory(item, selectedCat)) return false;
+            if (freeOnDateOnly && busyOnEventDate.has(String(item.id))) return false;
             const min = parseFloat(minPrice), max = parseFloat(maxPrice);
             if (!isNaN(min) && item.price < min) return false;
             if (!isNaN(max) && item.price > max) return false;
@@ -884,7 +925,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
             if (sortBy === 'desc') return b.price - a.price;
             return parseFloat(b.rating || '0') - parseFloat(a.rating || '0');
         });
-    }, [services, selectedEventType, selectedCat, minPrice, maxPrice, sortBy, showFavorites, favorites.ids]);
+    }, [services, selectedEventType, selectedCat, minPrice, maxPrice, sortBy, showFavorites, favorites.ids, freeOnDateOnly, busyOnEventDate]);
 
     // Explore search covers every service for the chosen event type; it has
     // its own category chips and ignores the catalog's price filter.
@@ -915,9 +956,63 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
 
     const openDetail = (item: ServiceItem) => {
         metaEvents.viewService(item);
+        logServiceEvent(item.id, 'view');
         setSelectedItem(item);
         translateY.setValue(0);
         setDetailModalVisible(true);
+    };
+
+    // "Message the partner": needs a customer account; opens (or reuses) the chat.
+    const openChat = async (item: ServiceItem) => {
+        if (chatOpening) return;
+        Haptics.selectionAsync();
+        const { data } = await supabase.auth.getSession();
+        const userId = data.session?.user?.id;
+        if (!userId) {
+            setDetailModalVisible(false);
+            setShowCustomerPortal(true);
+            return;
+        }
+        setChatOpening(true);
+        try {
+            const id = await startConversation(item.id);
+            setChat({ id, title: item.title, userId });
+        } catch {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        } finally {
+            setChatOpening(false);
+        }
+    };
+
+    // Estimate as a PDF, with exactly the lines and totals shown on screen.
+    const shareSmetaPdf = async () => {
+        if (pdfBusy || cart.length === 0) return;
+        setPdfBusy(true);
+        try {
+            await shareEstimatePdf({
+                lang,
+                eventTitle,
+                date: formattedDate,
+                guests: parsedGuests,
+                lines: cart.map(item => {
+                    const p = promoPercentFor(item);
+                    return {
+                        category: categoryLabels[item.category as PlanCategory] ?? '',
+                        title: item.title,
+                        detail: item.category === 'venues' ? `${item.price} AZN × ${parsedGuests} ${t.guestUnit}` : item.unit,
+                        price: `${formatCurrency(lineFinal(item))} AZN`,
+                        promo: p > 0 ? `${appliedPromo?.code} −${p}%` : undefined,
+                    };
+                }),
+                total: `${formatCurrency(totalEstimate)} AZN`,
+                perGuest: perGuestText,
+                savings: promoSavings > 0 ? `${formatCurrency(promoSavings)} AZN` : null,
+            });
+        } catch {
+            setSmetaToast({ id: Date.now(), title: growthText.pdfFailed });
+        } finally {
+            setPdfBusy(false);
+        }
     };
 
     // Welcome-screen card photos: the best-rated service photo for each event
@@ -1013,6 +1108,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
 
     const handleShare = async (item: ServiceItem) => {
         Haptics.selectionAsync();
+        logServiceEvent(item.id, 'share');
         // WhatsApp (and most messengers) only auto-linkify standard http(s)
         // URLs — a bare toyolsun:// scheme link shows as plain, untappable
         // text. Store links are real https:// URLs so they're always
@@ -1168,9 +1264,21 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                 <Text style={styles.configSubText}>{t.guestUnit}</Text>
                             </View>
                         </View>
-                        <View style={styles.countdownBanner}>
-                            <Text style={styles.countdownText}>{t.daysLeftPre} <Text style={styles.countdownDays}>{daysLeft}</Text> {t.daysLeftPost}</Text>
-                        </View>
+                        {selectedEventType === 'wedding' ? (
+                            <TouchableOpacity style={[styles.countdownBanner, styles.countdownTappable]} activeOpacity={0.8} onPress={() => { Haptics.selectionAsync(); setChecklistVisible(true); }}>
+                                <Text style={styles.countdownText}>{t.daysLeftPre} <Text style={styles.countdownDays}>{daysLeft}</Text> {t.daysLeftPost}</Text>
+                                <View style={styles.prepPill}>
+                                    <Text style={styles.prepPillText} allowFontScaling={false}>
+                                        {growthText.prep} {weddingPlan.done.filter(k => CHECKLIST.some(i => i.key === k)).length}/{CHECKLIST.length}
+                                    </Text>
+                                    <Feather name="chevron-right" size={13} color={Brand.ink} />
+                                </View>
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={styles.countdownBanner}>
+                                <Text style={styles.countdownText}>{t.daysLeftPre} <Text style={styles.countdownDays}>{daysLeft}</Text> {t.daysLeftPost}</Text>
+                            </View>
+                        )}
                     </View>
 
                     <AnnouncementStrip {...announcementHandlers} item={announcements.strip} onDone={announcements.markSeen} />
@@ -1192,6 +1300,10 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                         <TouchableOpacity style={[styles.chip, styles.favChip, showFavorites && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setShowFavorites(v => !v); }}>
                             <Feather name="heart" size={13} color={showFavorites ? Brand.white : Brand.gold} />
                             <Text style={[styles.chipText, showFavorites && styles.activeChipText]} allowFontScaling={false} maxFontSizeMultiplier={1}>{favText.chip}{favorites.ids.length ? ` ${favorites.ids.length}` : ''}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.chip, styles.favChip, freeOnDateOnly && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setFreeOnDateOnly(v => !v); }}>
+                            <Feather name="calendar" size={13} color={freeOnDateOnly ? Brand.white : Brand.gold} />
+                            <Text style={[styles.chipText, freeOnDateOnly && styles.activeChipText]} allowFontScaling={false} maxFontSizeMultiplier={1}>{growthText.freeOnDate}</Text>
                         </TouchableOpacity>
                         {[{ id: 'all', name: t.catAll }, { id: 'venues', name: t.catVenues }, { id: 'artists', name: t.catArtists }, { id: 'dj', name: t.catDj }, { id: 'media', name: t.catMedia }, { id: 'cars', name: t.catCars }, { id: 'wedding_dress', name: t.catWeddingDress }, { id: 'flowers', name: t.catFlowers }, { id: 'decor', name: t.catDecor }, { id: 'tourism', name: t.catTourism }].map(f => (
                             <TouchableOpacity key={f.id} style={[styles.chip, !showFavorites && selectedCat === f.id && styles.activeChip]} onPress={() => { Haptics.selectionAsync(); setShowFavorites(false); setSelectedCat(f.id as CategoryFilter); }}>
@@ -1270,7 +1382,10 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                     </TouchableOpacity>
                                 </View>
                                 <View style={styles.cardBody}>
-                                    <Text style={styles.cardTitle}>{item.title}</Text>
+                                    <Text style={styles.cardTitle}>
+                                        {item.title}
+                                        {verifiedIds.has(String(item.id)) && <Text>{'  '}<Feather name="check-circle" size={15} color={Brand.success} /></Text>}
+                                    </Text>
                                     <View style={styles.tagRow}>
                                         {item.tags?.map((tTag, idx) => <View key={idx} style={styles.tagBadge}><Text style={styles.tagText}>{resolveTagLabel(tTag, lang)}</Text></View>)}
                                     </View>
@@ -1424,6 +1539,15 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                     <Text style={styles.totalSavings}>{t.promoSaved}: −{formatCurrency(promoSavings)} AZN</Text>
                                 )}
                                 <Button
+                                    label={growthText.pdf}
+                                    icon="share"
+                                    variant="secondary"
+                                    fullWidth
+                                    loading={pdfBusy}
+                                    style={{ marginTop: 6 }}
+                                    onPress={shareSmetaPdf}
+                                />
+                                <Button
                                     label={t.sendManager}
                                     variant="gold"
                                     fullWidth
@@ -1539,11 +1663,21 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                         />
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, gap: 10 }}>
                             <Button label={t.close} variant="secondary" onPress={() => setShowDatePickerModal(false)} style={{ flex: 1 }} />
-                            <Button label={t.save} variant="primary" onPress={() => { setEventDate(selectedDate); setShowDatePickerModal(false); }} style={{ flex: 1 }} />
+                            <Button label={t.save} variant="primary" onPress={() => { setEventDate(selectedDate); weddingPlan.setWeddingDate(selectedDate); setShowDatePickerModal(false); }} style={{ flex: 1 }} />
                         </View>
                     </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>
+
+            <ChecklistModal
+                visible={checklistVisible}
+                lang={lang}
+                daysLeft={weddingPlan.daysLeft}
+                done={weddingPlan.done}
+                onToggle={weddingPlan.toggleItem}
+                onOpenCategory={c => openCatalogCategory(c as PlanCategory)}
+                onClose={() => setChecklistVisible(false)}
+            />
 
             {/* DETAIL MODAL */}
             <Modal visible={detailModalVisible} transparent animationType="slide" onRequestClose={() => setDetailModalVisible(false)}>
@@ -1562,6 +1696,12 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                     <Image source={{ uri: selectedItem.img }} style={styles.detailImg} />
                                 )}
                                 <Text style={styles.detailTitle}>{selectedItem.title}</Text>
+                                {verifiedIds.has(String(selectedItem.id)) && (
+                                    <View style={styles.verifiedPill}>
+                                        <Feather name="check-circle" size={13} color={Brand.success} />
+                                        <Text style={styles.verifiedPillText}>{growthText.verified}</Text>
+                                    </View>
+                                )}
                                 <Text style={styles.detailPrice}>{formatCurrency(selectedItem.price)} {selectedItem.unit}</Text>
                                 {selectedItem.description && <Text style={styles.detailDesc}>{selectedItem.description}</Text>}
                                 {selectedItem.address && (
@@ -1582,6 +1722,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                         <Text style={styles.detailInfo}>{selectedItem.capacity}</Text>
                                     </View>
                                 )}
+                                <AvailabilityView serviceId={selectedItem.id} eventDate={eventDate} lang={lang} />
                                 {(() => {
                                     const phone = normalizeAzPhone(selectedItem.phone);
                                     if (!phone) return null;
@@ -1591,7 +1732,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                     };
                                     return (
                                         <View style={styles.contactRow}>
-                                            <TouchableOpacity style={styles.contactBtn} activeOpacity={0.8} onPress={() => { metaEvents.contact(selectedItem, 'call'); open(telUrl(phone)); }}>
+                                            <TouchableOpacity style={styles.contactBtn} activeOpacity={0.8} onPress={() => { metaEvents.contact(selectedItem, 'call'); logServiceEvent(selectedItem.id, 'call'); open(telUrl(phone)); }}>
                                                 <Feather name="phone" size={16} color={Brand.ink} />
                                                 <Text style={styles.contactBtnText} numberOfLines={1} allowFontScaling={false}>{t.callBtn}</Text>
                                             </TouchableOpacity>
@@ -1599,7 +1740,7 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                                 <TouchableOpacity
                                                     style={[styles.contactBtn, styles.contactWhatsappBtn]}
                                                     activeOpacity={0.8}
-                                                    onPress={() => { metaEvents.contact(selectedItem, 'whatsapp'); open(whatsappUrl(phone, t.whatsappMsg.replace('{title}', selectedItem.title))); }}
+                                                    onPress={() => { metaEvents.contact(selectedItem, 'whatsapp'); logServiceEvent(selectedItem.id, 'whatsapp'); open(whatsappUrl(phone, t.whatsappMsg.replace('{title}', selectedItem.title))); }}
                                                 >
                                                     <FontAwesome name="whatsapp" size={17} color="#FFFFFF" />
                                                     <Text style={[styles.contactBtnText, { color: '#FFFFFF' }]} numberOfLines={1} allowFontScaling={false}>{t.whatsappBtn}</Text>
@@ -1608,6 +1749,17 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                         </View>
                                     );
                                 })()}
+                                {!partnerLoggedIn && selectedItem.owner_id && (
+                                    <Button
+                                        label={growthText.writeToPartner}
+                                        icon="message-circle"
+                                        variant="secondary"
+                                        fullWidth
+                                        loading={chatOpening}
+                                        style={{ marginTop: 10 }}
+                                        onPress={() => openChat(selectedItem)}
+                                    />
+                                )}
                                 <Button
                                     label={cart.some(c => c.id === selectedItem.id) ? t.inCart : t.addToCart}
                                     variant="primary"
@@ -1618,6 +1770,18 @@ const sendToTelegram = async (promo: PromoState | null, items: ServiceItem[]): P
                                 <ServiceReviews serviceId={selectedItem.id} lang={lang} />
                                 <Button label={t.close} variant="ghost" onPress={() => setDetailModalVisible(false)} style={{ marginTop: 6 }} />
                             </ScrollView>
+                        )}
+                        {/* Rendered inside the sheet: iOS can't show two sibling modals at once. */}
+                        {chat && (
+                            <ChatThread
+                                visible
+                                conversationId={chat.id}
+                                userId={chat.userId}
+                                role="customer"
+                                title={chat.title}
+                                lang={lang}
+                                onClose={() => setChat(null)}
+                            />
                         )}
                     </Animated.View>
                 </KeyboardAvoidingView>
@@ -1691,8 +1855,10 @@ const styles = StyleSheet.create(premiumStyles(scaled({
     brandTitle: { fontSize: 26, fontFamily: FONTS.serif, fontWeight: '700', color: '#2C2623', letterSpacing: 1 },
     headerDivider: { width: 40, height: 2, backgroundColor: '#D4AF37', marginVertical: 10 },
     welcomeSub: { fontSize: 11, letterSpacing: 2.5, color: '#7A6F67', fontWeight: '500' },
-    eventCardsContainer: { flex: 1, gap: isShortScreen ? 10 : 14, justifyContent: 'center' },
-    eventTypeCard: { flex: 1, minHeight: isShortScreen ? 84 : 120, maxHeight: 148, borderRadius: 22, overflow: 'hidden', backgroundColor: '#2A2421', justifyContent: 'flex-end', shadowColor: '#1F1A17', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 6 },
+    // Short phones: the cards share the leftover height so the sign-up buttons fit.
+    // Taller phones: fixed-height cards and the whole screen stays centred.
+    eventCardsContainer: isShortScreen ? { flex: 1, gap: 10, justifyContent: 'center' } : { gap: 14 },
+    eventTypeCard: { ...(isShortScreen ? { flex: 1, minHeight: 84, maxHeight: 148 } : { height: 148 }), borderRadius: 22, overflow: 'hidden', backgroundColor: '#2A2421', justifyContent: 'flex-end', shadowColor: '#1F1A17', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 6 },
     eventTypeContent: { paddingHorizontal: 20, paddingBottom: isShortScreen ? 12 : 18, paddingRight: 72 },
     eventTypeIndex: { fontSize: 11, color: '#E3C77A', fontWeight: '600', letterSpacing: 2, marginBottom: 4 },
     eventTypeArrow: { position: 'absolute', right: 18, bottom: isShortScreen ? 14 : 20, width: 40, height: 40, borderRadius: 20, backgroundColor: '#E3C77A', alignItems: 'center', justifyContent: 'center' },
@@ -1747,6 +1913,11 @@ const styles = StyleSheet.create(premiumStyles(scaled({
     configSubText: { fontSize: 10, color: '#A0968E', marginTop: 2 },
     configInput: { fontSize: 15, fontWeight: '700', color: '#2C2623', marginTop: 2, padding: 0 },
     countdownBanner: { backgroundColor: '#2C2623', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center' },
+    countdownTappable: { flexDirection: 'row', justifyContent: 'space-between' },
+    prepPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#D4AF37', borderRadius: 12, paddingLeft: 9, paddingRight: 5, paddingVertical: 3, marginLeft: 8 },
+    prepPillText: { fontSize: 11.5, fontWeight: '700', color: '#2C2623' },
+    verifiedPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#DCEEDC', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4, marginTop: -4, marginBottom: 8 },
+    verifiedPillText: { fontSize: 12, fontWeight: '600', color: '#2F7D5C', marginLeft: 5 },
     countdownText: { color: '#EFECE6', fontSize: 12 },
     countdownDays: { color: '#D4AF37', fontWeight: '700', fontSize: 14 },
     filterBar: { flexDirection: 'row', marginBottom: 16 },

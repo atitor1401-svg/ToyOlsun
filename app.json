@@ -2,7 +2,7 @@
   "expo": {
     "name": "ToyOlsun",
     "slug": "ToyOlsun",
-    "version": "1.1.9",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "toyolsun",
@@ -12,7 +12,8 @@
       "bundleIdentifier": "com.ibo96.ToyOlsun",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +21,9 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["com.google.android.gms.permission.AD_ID"],
+      "permissions": [
+        "com.google.android.gms.permission.AD_ID"
+      ],
       "package": "com.ibo96.ToyOlsun"
     },
     "web": {
@@ -50,7 +53,9 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#D4AF37",
-          "sounds": ["./assets/sounds/toyolsun.wav"]
+          "sounds": [
+            "./assets/sounds/toyolsun.wav"
+          ]
         }
       ],
       "@sentry/react-native",
@@ -88,6 +93,13 @@
         "expo-tracking-transparency",
         {
           "userTrackingPermission": "Bu icazə sizə daha uyğun ToyOlsun reklamları göstərmək üçün istifadə olunur."
+        }
+      ],
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.236877306922-88831vlm7gjsemd8fv545pp7d7lv052c"
         }
       ]
     ],

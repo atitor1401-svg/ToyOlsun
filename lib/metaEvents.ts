@@ -37,9 +37,10 @@ export const metaEvents = {
     search: (term: string) => log('Searched', undefined, { fb_search_string: term.slice(0, 100) }),
     contact: (s: ServiceLike, channel: 'call' | 'whatsapp') =>
         log('Contact', undefined, { ...contentParams(s), channel }),
-    // Sent once, when the e-mail code is confirmed and the account really exists.
-    completeRegistration: (role: 'customer' | 'partner') =>
-        log('CompletedRegistration', undefined, { fb_registration_method: 'email', role }),
+    // Sent once, when the account really exists (e-mail code confirmed, or
+    // first Apple/Google sign-in).
+    completeRegistration: (role: 'customer' | 'partner', method: 'email' | 'apple' | 'google' = 'email') =>
+        log('CompletedRegistration', undefined, { fb_registration_method: method, role }),
     submitOrder: (total: number, itemCount: number) =>
         log('SubmitApplication', total, { fb_currency: 'AZN', fb_num_items: itemCount }),
 };
