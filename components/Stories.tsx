@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { premiumStyles } from '@/lib/typography';
 import { scaled } from '@/lib/responsive';
 import type { Announcement } from '@/components/Announcements';
+import { useStoryExclusions } from '@/lib/storyExclusions';
 import { pickAnnouncementText } from '@/components/Announcements';
 
 type Lang = 'az' | 'ru' | 'en';
@@ -88,8 +89,9 @@ export default function Stories({ lang, services, announcements, onOpenService, 
         });
     }, []);
 
+    const hiddenFromStories = useStoryExclusions();
     const stories = useMemo<Story[]>(() => {
-        const withPhoto = services.filter(photo);
+        const withPhoto = services.filter(s => photo(s) && !hiddenFromStories.has(String(s.id)));
         const serviceSlide = (s: StoryService): Slide => ({
             image: photo(s),
             title: s.title,
@@ -129,7 +131,7 @@ export default function Stories({ lang, services, announcements, onOpenService, 
             });
         }
         return list;
-    }, [services, announcements, lang, tx]);
+    }, [services, announcements, lang, tx, hiddenFromStories]);
 
     if (stories.length === 0) return null;
 
