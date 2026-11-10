@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>ToyOlsun Admin</title>
+<style>
+  :root {
+    --bg: #0f0e0c; --card: #1a1815; --line: #2e2a24; --text: #f3efe7; --muted: #9a9284;
+    --gold: #d4af37; --green: #2e9e5b; --red: #c94a4a; --blue: #3b82c4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(15,14,12,.96); border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; margin: 0; color: var(--gold); letter-spacing: .5px; flex: 1; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer; background: #2a2620; }
+  button:disabled { opacity: .5; cursor: default; }
+  .gold { background: var(--gold); color: #1a1407; font-weight: 600; }
+  .green { background: var(--green); color: #fff; font-weight: 600; }
+  .red { background: var(--red); color: #fff; }
+  .ghost { background: transparent; border: 1px solid var(--line); }
+  input, select, textarea { width: 100%; background: #12110f; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  textarea { min-height: 90px; resize: vertical; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  .login { max-width: 360px; margin: 12vh auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+  .login h2 { margin: 0 0 6px; color: var(--gold); }
+  .err { color: #ff8b8b; font-size: 13px; margin-top: 10px; min-height: 18px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
+  .stat b { display: block; font-size: 20px; color: var(--gold); }
+  .stat span { font-size: 11px; color: var(--muted); }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; }
+  .tabs button { white-space: nowrap; background: var(--card); border: 1px solid var(--line); }
+  .tabs button.on { background: var(--gold); color: #1a1407; font-weight: 600; border-color: var(--gold); }
+  .badge { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--red); color: #fff; font-size: 12px; margin-left: 4px; }
+  .tabs button.on .badge { background: #1a1407; color: var(--gold); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
+  .imgs { display: flex; gap: 4px; overflow-x: auto; scroll-snap-type: x mandatory; background: #000; }
+  .imgs img { height: 220px; width: auto; max-width: 85%; object-fit: cover; scroll-snap-align: start; flex: none; }
+  .noimg { padding: 30px; text-align: center; color: #ff8b8b; background: #201414; }
+  .body { padding: 12px 14px 14px; }
+  .title { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .meta b { color: var(--text); font-weight: 500; }
+  .desc { margin: 8px 0 0; font-size: 14px; white-space: pre-wrap; color: #d8d2c6; max-height: 7.5em; overflow: hidden; }
+  .desc.open { max-height: none; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .row select { width: auto; flex: 1; min-width: 150px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 12px; background: #2a2620; margin-right: 4px; }
+  .pill.pending { background: #4a3b10; color: #f5d36b; }
+  .pill.approved { background: #143b24; color: #7fe0a6; }
+  .pill.rejected { background: #3d1717; color: #ff9a9a; }
+  .edit { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .confirm { background: #2b1414; border: 1px solid var(--red); border-radius: 10px; padding: 10px; margin-top: 10px; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+  .user { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #2a2620; border: 1px solid var(--gold); border-radius: 12px; padding: 10px 16px; display: none; z-index: 10; max-width: 90%; }
+  .search { margin-bottom: 12px; }
+  .switches { padding: 4px 14px; }
+  .switch { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+  .switch + .switch { border-top: 1px solid var(--line); }
+  .switch > div { flex: 1; }
+  .switch button { min-width: 84px; }
+  @media (max-width: 520px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .imgs img { height: 180px; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// Public project URL + anon key (the same ones the app ships with).
+// Every admin action is checked on the server (public.admins table).
+const sb = supabase.createClient(
+  'https://xokarxcpcjvmassjheka.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhva2FyeGNwY2p2bWFzc2poZWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NjY0OTgsImV4cCI6MjEwMzM0MjQ5OH0.7TbuRbILV6XiMIps36eQBkDJcLXNzVBPZjZmlgwStwQ'
+);
+
+const CATS = { venues: 'Zallar', artists: 'Artistlər', dj: 'DJ', media: 'Foto & Video', cars: 'VIP Kortej',
+  wedding_dress: 'Gəlinlik', flowers: 'Gül Dükanı', decor: 'Dekor', tourism: 'Bal Ayı' };
+const STATUS = { pending: 'Gözləyir', approved: 'Təsdiqlənib', rejected: 'Rədd edilib' };
+const PUSH = { none: 'Push getməsin', owner: 'Yalnız partnyora push', all: 'Partnyora + hamıya push' };
+
+const state = { tab: 'pending', services: { pending: [], approved: [], rejected: [] }, users: [], days: 1,
+  stats: null, editing: null, confirming: null, search: '', openDesc: new Set(), busy: false };
+
+const $app = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtDate = d => d ? new Date(d).toLocaleString('az-AZ', { timeZone: 'Asia/Baku', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+
+function toast(msg, ms = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast._t); toast._t = setTimeout(() => (t.style.display = 'none'), ms);
+}
+
+async function rpc(name, args) {
+  const { data, error } = await sb.rpc(name, args || {});
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// ---------- login ----------
+function renderLogin(msg = '') {
+  $app.innerHTML = `
+    <div class="login">
+      <h2>ToyOlsun Admin</h2>
+      <div class="meta">Admin hesabı ilə daxil olun</div>
+      <form id="lf">
+        <label>Email</label><input id="em" type="email" autocomplete="username" required>
+        <label>Şifrə</label><input id="pw" type="password" autocomplete="current-password" required>
+        <button class="gold" style="width:100%;margin-top:16px" id="lb">Daxil ol</button>
+        <div class="err" id="le">${esc(msg)}</div>
+      </form>
+    </div>`;
+  document.getElementById('lf').onsubmit = async e => {
+    e.preventDefault();
+    const b = document.getElementById('lb'); b.disabled = true;
+    const { error } = await sb.auth.signInWithPassword({
+      email: document.getElementById('em').value.trim(),
+      password: document.getElementById('pw').value,
+    });
+    b.disabled = false;
+    if (error) { document.getElementById('le').textContent = 'Email və ya şifrə səhvdir'; return; }
+    start();
+  };
+}
+
+// ---------- data ----------
+async function loadAll() {
+  const [stats, pending, approved, rejected, users, settings] = await Promise.all([
+    rpc('admin_stats'), rpc('admin_services', { p_status: 'pending' }), rpc('admin_services', { p_status: 'approved' }),
+    rpc('admin_services', { p_status: 'rejected' }), rpc('admin_users', { p_days: state.days }), rpc('admin_get_settings'),
+  ]);
+  Object.assign(state, { stats, users, settings, services: { pending, approved, rejected } });
+}
+
+async function refresh(msg) {
+  try { await loadAll(); render(); if (msg) toast(msg); }
+  catch (e) { toast('Xəta: ' + e.message, 5000); }
+}
+
+// ---------- render ----------
+function render() {
+  const s = state.stats || {};
+  const n = state.services;
+  const tab = (id, label, count) =>
+    `<button class="${state.tab === id ? 'on' : ''}" data-tab="${id}">${label}${count ? `<span class="badge">${count}</span>` : ''}</button>`;
+  $app.innerHTML = `
+    <header><h1>ToyOlsun Admin</h1>
+      <button class="ghost" data-act="reload">↻</button>
+      <button class="ghost" data-act="logout">Çıxış</button></header>
+    <main>
+      <div class="stats">
+        <div class="stat"><b>${s.pending ?? '–'}</b><span>Gözləyən</span></div>
+        <div class="stat"><b>${s.signups_today ?? '–'}</b><span>Bu gün qeydiyyat</span></div>
+        <div class="stat"><b>${s.customers ?? '–'} / ${s.partners ?? '–'}</b><span>Müştəri / Partnyor</span></div>
+        <div class="stat"><b>${s.devices ?? '–'}</b><span>Cihaz</span></div>
+      </div>
+      ${renderSwitches()}
+      <div class="tabs">
+        ${tab('pending', 'Gözləyənlər', n.pending.length)}
+        ${tab('approved', 'Kataloq (' + n.approved.length + ')')}
+        ${tab('rejected', 'Rədd edilənlər (' + n.rejected.length + ')')}
+        ${tab('users', 'Qeydiyyatlar')}
+      </div>
+      <div id="list">${state.tab === 'users' ? renderUsers() : renderServices()}</div>
+    </main>`;
+}
+
+function renderSwitches() {
+  const st = state.settings || {};
+  const sw = (key, title, hint) => {
+    const on = st[key] !== false;
+    return `<div class="switch">
+      <div><b>${title}</b><div class="meta">${hint}</div></div>
+      <button class="${on ? 'green' : 'red'}" data-act="setting" data-key="${key}" data-on="${on ? 0 : 1}">${on ? 'AÇIQ' : 'BAĞLI'}</button>
+    </div>`;
+  };
+  return `<div class="card switches">
+    ${sw('broadcast_push', 'Hamıya gedən push', 'Yeni xidmət təsdiqlənəndə bütün istifadəçilərə gedən elan')}
+    ${sw('all_push', 'Bütün pushlar', 'Bağlı olanda heç bir push getmir: mesaj, sifariş, təsdiq bildirişi də')}
+  </div>`;
+}
+
+function renderServices() {
+  let list = state.services[state.tab] || [];
+  let search = '';
+  if (state.tab !== 'pending') {
+    search = `<input class="search" id="search" placeholder="Axtar: ad, kateqoriya, email, telefon…" value="${esc(state.search)}">`;
+    const q = state.search.toLowerCase().trim();
+    if (q) list = list.filter(x => [x.title, CATS[x.category], x.category, x.owner_email, x.owner_name, x.phone, x.id]
+      .some(v => String(v ?? '').toLowerCase().includes(q)));
+  }
+  if (!list.length) return search + `<div class="empty">${state.tab === 'pending' ? 'Gözləyən xidmət yoxdur 🎉' : 'Heç nə tapılmadı'}</div>`;
+  return search + list.map(renderCard).join('');
+}
+
+function renderCard(x) {
+  const imgs = (x.images && x.images.length ? x.images : (x.img ? [x.img] : []));
+  const id = x.id;
+  const editing = state.editing === id;
+  const conf = state.confirming === id;
+  const descOpen = state.openDesc.has(id);
+  const actions = {
+    pending: `
+      <select id="push-${id}">${Object.entries(PUSH).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+      <button class="green" data-act="approve" data-id="${id}">Təsdiqlə</button>
+      <button class="red" data-act="reject" data-id="${id}">Rədd et</button>`,
+    approved: `
+      <button class="ghost" data-act="pending" data-id="${id}">Kataloqdan gizlət</button>
+      <button class="ghost" data-act="story" data-id="${id}" data-on="${x.hidden_from_stories ? 0 : 1}">${x.hidden_from_stories ? 'Story-də göstər' : 'Story-dən gizlət'}</button>`,
+    rejected: `
+      <button class="green" data-act="approve" data-id="${id}">Təsdiqlə (pushsuz)</button>`,
+  }[x.status] || '';
+  return `
+    <div class="card">
+      ${imgs.length ? `<div class="imgs">${imgs.map(u => `<img loading="lazy" src="${esc(u)}" alt="">`).join('')}</div>`
+                    : `<div class="noimg">⚠️ Şəkil yoxdur</div>`}
+      <div class="body">
+        <div class="title">${esc(x.title || '(adsız)')}</div>
+        <div class="meta">
+          <span class="pill ${x.status}">${STATUS[x.status] || esc(x.status)}</span>
+          <span class="pill">${esc(CATS[x.category] || x.category || '—')}</span>
+          <span class="pill">⭐ ${esc(x.rating || '—')}</span>
+          ${x.hidden_from_stories ? '<span class="pill">Story-də yox</span>' : ''}
+        </div>
+        <div class="meta" style="margin-top:6px">
+          <b>${x.price ? esc(x.price) + ' AZN' : 'Qiymət yoxdur'}</b>${x.unit ? ' / ' + esc(x.unit) : ''} · id ${id} · ${fmtDate(x.created_at)}<br>
+          Partnyor: <b>${esc(x.owner_name || '—')}</b> ${x.owner_email ? '· ' + esc(x.owner_email) : ''}<br>
+          ${x.phone ? 'Tel: <b>' + esc(x.phone) + '</b>' : ''} ${x.address ? '· ' + esc(x.address) : ''} ${x.capacity ? '· Tutum: ' + esc(x.capacity) : ''}
+        </div>
+        ${x.description ? `<div class="desc ${descOpen ? 'open' : ''}" data-act="desc" data-id="${id}">${esc(x.description)}</div>` : ''}
+        <div class="row">
+          ${actions}
+          <button class="ghost" data-act="edit" data-id="${id}">${editing ? 'Bağla' : 'Redaktə'}</button>
+          <button class="ghost" data-act="askdel" data-id="${id}" style="color:#ff8b8b">Sil</button>
+        </div>
+        ${conf ? `<div class="confirm">“${esc(x.title)}” həmişəlik silinsin? Geri qaytarmaq olmur.
+            <div class="row"><button class="red" data-act="del" data-id="${id}">Bəli, sil</button>
+            <button class="ghost" data-act="nodel">Xeyr</button></div></div>` : ''}
+        ${editing ? renderEdit(x) : ''}
+      </div>
+    </div>`;
+}
+
+function renderEdit(x) {
+  const f = (k, label, v, type = 'text') => `<div><label>${label}</label><input data-f="${k}" type="${type}" value="${esc(v ?? '')}"></div>`;
+  return `
+    <div class="edit" id="edit-${x.id}">
+      ${f('title', 'Ad', x.title)}
+      <div class="grid2">
+        ${f('price', 'Qiymət (AZN)', x.price, 'number')}
+        ${f('unit', 'Vahid (məs. nəfər, saat)', x.unit)}
+        ${f('rating', 'Reytinq', x.rating)}
+        <div><label>Kateqoriya</label><select data-f="category">
+          ${Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === x.category ? 'selected' : ''}>${v}</option>`).join('')}
+        </select></div>
+        ${f('phone', 'Telefon', x.phone)}
+        ${f('capacity', 'Tutum', x.capacity)}
+      </div>
+      ${f('address', 'Ünvan', x.address)}
+      <label>Təsvir</label><textarea data-f="description">${esc(x.description || '')}</textarea>
+      <div class="row"><button class="gold" data-act="save" data-id="${x.id}">Yadda saxla</button>
+      <span class="meta">Redaktə push göndərmir.</span></div>
+    </div>`;
+}
+
+function renderUsers() {
+  const days = [1, 7, 30].map(d => `<option value="${d}" ${state.days === d ? 'selected' : ''}>${d === 1 ? 'Bu gün' : 'Son ' + d + ' gün'}</option>`).join('');
+  const prov = { email: 'Email', apple: 'Apple', google: 'Google' };
+  const rows = state.users.map(u => `
+    <div class="user">
+      <b>${esc(u.name || '(ad yoxdur)')}</b>
+      <span class="pill">${u.role === 'partner' ? 'Partnyor' : u.role === 'customer' ? 'Müştəri' : 'Yarımçıq'}</span>
+      <span class="pill">${esc(prov[u.provider] || u.provider)}</span>
+      ${u.platform ? `<span class="pill">${u.platform === 'ios' ? 'iPhone' : u.platform === 'android' ? 'Android' : esc(u.platform)}</span>` : ''}
+      ${u.services ? `<span class="pill">${u.services} xidmət</span>` : ''}
+      <div class="meta">${esc(u.email)} · ${fmtDate(u.created_at)}${u.confirmed ? '' : ' · email təsdiqlənməyib'}</div>
+    </div>`).join('');
+  return `<select id="days" style="margin-bottom:12px">${days}</select>
+    <div class="meta" style="margin-bottom:8px">${state.users.length} nəfər</div>
+    ${rows || '<div class="empty">Qeydiyyat yoxdur</div>'}`;
+}
+
+// ---------- actions ----------
+async function act(name, id, el) {
+  const find = () => Object.values(state.services).flat().find(x => x.id === id);
+  try {
+    switch (name) {
+      case 'reload': return refresh('Yeniləndi');
+      case 'setting': {
+        const on = el.dataset.on === '1';
+        await rpc('admin_set_setting', { p_key: el.dataset.key, p_value: on });
+        return refresh((el.dataset.key === 'all_push' ? 'Bütün pushlar ' : 'Hamıya gedən push ') + (on ? 'açıldı' : 'bağlandı'));
+      }
+      case 'logout': await sb.auth.signOut(); return renderLogin();
+      case 'desc': state.openDesc.has(id) ? state.openDesc.delete(id) : state.openDesc.add(id); return render();
+      case 'edit': state.editing = state.editing === id ? null : id; state.confirming = null; return render();
+      case 'askdel': state.confirming = id; return render();
+      case 'nodel': state.confirming = null; return render();
+      case 'approve': {
+        const sel = document.getElementById('push-' + id);
+        const push = sel ? sel.value : 'none';
+        await rpc('admin_set_status', { p_id: id, p_status: 'approved', p_push: push });
+        return refresh('Təsdiqləndi · ' + PUSH[push]);
+      }
+      case 'reject':
+        await rpc('admin_set_status', { p_id: id, p_status: 'rejected', p_push: 'none' });
+        return refresh('Rədd edildi (push getmədi)');
+      case 'pending':
+        await rpc('admin_set_status', { p_id: id, p_status: 'pending', p_push: 'none' });
+        return refresh('Kataloqdan gizlədildi (Gözləyənlərə keçdi)');
+      case 'story':
+        await rpc('admin_set_story_hidden', { p_id: id, p_hidden: el.dataset.on === '1' });
+        return refresh(el.dataset.on === '1' ? 'Story-dən gizlədildi' : 'Story-də göstərilir');
+      case 'del':
+        await rpc('admin_delete_service', { p_id: id });
+        state.confirming = null;
+        return refresh('Silindi');
+      case 'save': {
+        const box = document.getElementById('edit-' + id);
+        const old = find() || {};
+        const patch = {};
+        box.querySelectorAll('[data-f]').forEach(i => {
+          const k = i.dataset.f; const v = i.value;
+          if (String(old[k] ?? '') !== v) patch[k] = (k === 'price' && v === '') ? null : v;
+        });
+        if (!Object.keys(patch).length) { state.editing = null; return render(); }
+        await rpc('admin_update_service', { p_id: id, p_patch: patch });
+        state.editing = null;
+        return refresh('Yadda saxlanıldı');
+      }
+    }
+  } catch (e) { toast('Xəta: ' + e.message, 5000); }
+}
+
+$app.addEventListener('click', e => {
+  const t = e.target.closest('[data-tab],[data-act]');
+  if (!t) return;
+  if (t.dataset.tab) { state.tab = t.dataset.tab; state.editing = null; state.confirming = null; return render(); }
+  if (t.tagName === 'BUTTON') { t.disabled = true; }
+  act(t.dataset.act, t.dataset.id ? Number(t.dataset.id) : null, t);
+});
+$app.addEventListener('input', e => {
+  if (e.target.id === 'search') {
+    state.search = e.target.value;
+    const pos = e.target.selectionStart;
+    document.getElementById('list').innerHTML = renderServices();
+    const s = document.getElementById('search'); s.focus(); s.setSelectionRange(pos, pos);
+  }
+});
+$app.addEventListener('change', async e => {
+  if (e.target.id === 'days') {
+    state.days = Number(e.target.value);
+    try { state.users = await rpc('admin_users', { p_days: state.days }); render(); } catch (er) { toast('Xəta: ' + er.message); }
+  }
+});
+
+// ---------- start ----------
+async function start() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return renderLogin();
+  $app.innerHTML = '<div class="empty">Yüklənir…</div>';
+  let ok = false;
+  try { ok = await rpc('is_admin'); } catch (e) { /* not admin or function missing */ }
+  if (!ok) { await sb.auth.signOut(); return renderLogin('Bu hesabın admin icazəsi yoxdur'); }
+  await refresh();
+}
+start();
+</script>
+</body>
+</html>
