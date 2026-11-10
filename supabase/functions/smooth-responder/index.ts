@@ -20,7 +20,14 @@ async function revokeAppleToken(authorizationCode: string): Promise<string> {
   const privateKey = Deno.env.get("APPLE_PRIVATE_KEY");
   if (!teamId || !keyId || !privateKey) return "skipped: apple secrets not set";
 
-  const key = await importPKCS8(privateKey.replace(/\\n/g, "\n"), "ES256");
+  // The secret may be pasted with or without the BEGIN/END lines, quotes,
+  // literal "\n" or no line breaks at all; rebuild a clean PEM from the base64.
+  const base64 = privateKey
+    .replace(/\\n/g, "\n")
+    .replace(/-----[A-Z ]+-----/g, "")
+    .replace(/["'\s]/g, "");
+  const pem = `-----BEGIN PRIVATE KEY-----\n${base64.match(/.{1,64}/g)?.join("\n")}\n-----END PRIVATE KEY-----`;
+  const key = await importPKCS8(pem, "ES256");
   const clientSecret = await new SignJWT({})
     .setProtectedHeader({ alg: "ES256", kid: keyId })
     .setIssuer(teamId)
