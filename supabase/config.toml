@@ -16,3 +16,8 @@ enabled = true
 # not Supabase's gateway JWT verification.
 verify_jwt = false
 entrypoint = "./functions/send-push/index.ts"
+
+[functions.partner-apply]
+enabled = true
+# Public partner sign-up form (toyolsun.world/partnyor) → Telegram. No login.
+verify_jwt = false

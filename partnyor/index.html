@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toy Olsun — Partnyor qeydiyyatı</title>
+<meta name="description" content="Toy biznesinizi Toy Olsun tətbiqində pulsuz yerləşdirin. Müraciət edin, 24 saat ərzində sizinlə əlaqə saxlayaq.">
+<meta property="og:title" content="Toy Olsun — Partnyor ol">
+<meta property="og:description" content="Toy biznesinizi pulsuz yerləşdirin. Komissiya yoxdur.">
+<style>
+  :root { --bg:#FAF8F5; --card:#fff; --ink:#2C2623; --muted:#8A7E75; --gold:#C9A227; --line:#E8E1D8; --ok:#2E7D4F; --err:#B3261E; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); line-height:1.5; }
+  .wrap { max-width:560px; margin:0 auto; padding:24px 16px 48px; }
+  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  .brand { font-weight:700; font-size:20px; letter-spacing:.3px; }
+  .brand span { color:var(--gold); }
+  .lang button { border:1px solid var(--line); background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; font-size:13px; color:var(--ink); }
+  .lang button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  h1 { font-size:28px; line-height:1.2; margin:8px 0 10px; }
+  .lead { color:var(--muted); margin:0 0 20px; }
+  ul.perks { list-style:none; padding:0; margin:0 0 24px; display:grid; gap:8px; }
+  ul.perks li { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:15px; }
+  form { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; display:grid; gap:14px; }
+  label { font-size:14px; font-weight:600; display:block; margin-bottom:6px; }
+  label small { font-weight:400; color:var(--muted); }
+  input, select, textarea { width:100%; font:inherit; font-size:16px; padding:12px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--gold); border-color:var(--gold); }
+  textarea { min-height:90px; resize:vertical; }
+  .free { display:inline-block; background:var(--gold); color:#fff; font-weight:700; font-size:13px; letter-spacing:.5px; padding:6px 12px; border-radius:999px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .two > div { min-width:0; }
+  h1, .lead, li { overflow-wrap:anywhere; }
+  .note { font-size:13px; color:var(--muted); text-align:center; }
+  .hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+  button.send { background:var(--ink); color:#fff; border:0; border-radius:12px; padding:14px; font-size:16px; font-weight:600; cursor:pointer; }
+  button.send:disabled { opacity:.6; cursor:wait; }
+  .msg { display:none; padding:14px; border-radius:12px; font-size:15px; }
+  .msg.ok { display:block; background:#E9F5EE; color:var(--ok); }
+  .msg.err { display:block; background:#FBEAEA; color:var(--err); }
+  .apps { margin-top:24px; text-align:center; color:var(--muted); font-size:14px; }
+  .apps a { display:inline-block; margin:8px 4px 0; padding:10px 14px; border-radius:10px; background:#fff; border:1px solid var(--line); color:var(--ink); text-decoration:none; font-weight:600; }
+  footer { margin-top:28px; text-align:center; font-size:13px; color:var(--muted); }
+  footer a { color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">Toy <span>Olsun</span></div>
+    <div class="lang"><button type="button" data-l="az" class="on">AZ</button> <button type="button" data-l="ru">RU</button></div>
+  </div>
+
+  <div class="free" data-t="free">100% PULSUZ · KOMİSSİYA YOXDUR</div>
+  <h1 data-t="h1">Toy biznesinizi pulsuz yerləşdirin</h1>
+  <p class="lead" data-t="lead">Toy Olsun — Azərbaycanda toy xidmətlərinin tətbiqidir. Müştərilər sizi burada tapır və birbaşa sizinlə əlaqə saxlayır.</p>
+
+  <ul class="perks">
+    <li data-t="p1">✅ Tamamilə pulsuz, komissiya yoxdur</li>
+    <li data-t="p2">📞 Müştəri birbaşa zəng edir, WhatsApp-a və çata yazır</li>
+    <li data-t="p3">📸 Şəkilləriniz, qiymətiniz və əlaqə məlumatınız bir səhifədə</li>
+    <li data-t="p4">⚡ Qeydiyyatdan keçin, 24 saat ərzində sizinlə əlaqə saxlayaq</li>
+  </ul>
+
+  <form id="f" novalidate>
+    <div class="two">
+      <div>
+        <label for="name"><span data-t="lName">Ad</span> *</label>
+        <input id="name" name="name" required maxlength="40" autocomplete="given-name">
+      </div>
+      <div>
+        <label for="surname"><span data-t="lSurname">Soyad</span> *</label>
+        <input id="surname" name="surname" required maxlength="40" autocomplete="family-name">
+      </div>
+    </div>
+    <div>
+      <label for="business"><span data-t="lBusiness">Biznesin adı</span> *</label>
+      <input id="business" name="business" required maxlength="100" autocomplete="organization">
+    </div>
+    <div>
+      <label for="category"><span data-t="lCategory">Xidmətiniz</span> *</label>
+      <select id="category" name="category" required>
+        <option value="" disabled selected data-t="pick">Seçin…</option>
+        <option value="venues" data-t="cVenues">Şadlıq sarayı</option>
+        <option value="artists" data-t="cArtists">Müğənni / artist</option>
+        <option value="dj">DJ</option>
+        <option value="media" data-t="cMedia">Foto / video</option>
+        <option value="wedding_dress" data-t="cDress">Gəlinlik salonu</option>
+        <option value="flowers" data-t="cFlowers">Gül dükanı</option>
+        <option value="decor" data-t="cDecor">Dekor</option>
+        <option value="cars" data-t="cCars">Toy maşını / kortej</option>
+        <option value="tourism" data-t="cTourism">Bal ayı / turizm</option>
+        <option value="other" data-t="cOther">Digər</option>
+      </select>
+    </div>
+    <div>
+      <label for="phone"><span data-t="lPhone">Telefon / WhatsApp</span> *</label>
+      <input id="phone" name="phone" type="tel" required maxlength="30" placeholder="+994 50 000 00 00" autocomplete="tel">
+    </div>
+    <div>
+      <label for="instagram"><span data-t="lInsta">Instagram səhifəsi</span> <small data-t="opt">(istəyə görə)</small></label>
+      <input id="instagram" name="instagram" maxlength="100" placeholder="@sizin_sehife">
+    </div>
+    <div>
+      <label for="city" data-t="lCity">Şəhər</label>
+      <input id="city" name="city" maxlength="50" value="Bakı">
+    </div>
+    <div>
+      <label for="price"><span data-t="lPrice">Başlanğıc qiymət</span> <small data-t="opt">(istəyə görə)</small></label>
+      <input id="price" name="price" maxlength="60" placeholder="AZN">
+    </div>
+    <div>
+      <label for="note"><span data-t="lNote">Qısa məlumat</span> <small data-t="opt">(istəyə görə)</small></label>
+      <textarea id="note" name="note" maxlength="600"></textarea>
+    </div>
+    <div class="hp" aria-hidden="true"><input name="website" tabindex="-1" autocomplete="off"></div>
+    <button class="send" type="submit" data-t="send">Pulsuz qeydiyyatdan keç</button>
+    <div class="note" data-t="after">Qeydiyyatdan sonra 24 saat ərzində sizə zəng edib səhifənizi birlikdə hazırlayacağıq.</div>
+    <div id="msg" class="msg" role="status"></div>
+  </form>
+
+  <div class="apps">
+    <div data-t="apps">Və ya tətbiqi yükləyin → "Partnyor" bölməsi:</div>
+    <a href="https://apps.apple.com/app/id6808000909">App Store</a>
+    <a href="https://play.google.com/store/apps/details?id=com.ibo96.ToyOlsun">Google Play</a>
+    <a href="https://instagram.com/toyolsunwedding">Instagram</a>
+  </div>
+
+  <footer><a href="../index.html" data-t="privacy">Məxfilik siyasəti</a></footer>
+</div>
+
+<script>
+const ENDPOINT = 'https://xokarxcpcjvmassjheka.supabase.co/functions/v1/partner-apply';
+const T = {
+  az: {
+    h1:'Toy biznesinizi pulsuz yerləşdirin',
+    lead:'Toy Olsun — Azərbaycanda toy xidmətlərinin tətbiqidir. Müştərilər sizi burada tapır və birbaşa sizinlə əlaqə saxlayır.',
+    p1:'✅ Tamamilə pulsuz, komissiya yoxdur', p2:'📞 Müştəri birbaşa zəng edir, WhatsApp-a və çata yazır',
+    p3:'📸 Şəkilləriniz, qiymətiniz və əlaqə məlumatınız bir səhifədə', p4:'⚡ Qeydiyyatdan keçin, 24 saat ərzində sizinlə əlaqə saxlayaq',
+    free:'100% PULSUZ · KOMİSSİYA YOXDUR', pick:'Seçin…', lSurname:'Soyad', after:'Qeydiyyatdan sonra 24 saat ərzində sizə zəng edib səhifənizi birlikdə hazırlayacağıq.',
+    lBusiness:'Biznesin adı', lCategory:'Xidmətiniz', lPhone:'Telefon / WhatsApp', lName:'Ad', lInsta:'Instagram səhifəsi',
+    lCity:'Şəhər', lPrice:'Başlanğıc qiymət', lNote:'Qısa məlumat', opt:'(istəyə görə)',
+    cVenues:'Şadlıq sarayı', cArtists:'Müğənni / artist', cMedia:'Foto / video', cDress:'Gəlinlik salonu', cFlowers:'Gül dükanı',
+    cDecor:'Dekor', cCars:'Toy maşını / kortej', cTourism:'Bal ayı / turizm', cOther:'Digər',
+    send:'Pulsuz qeydiyyatdan keç', sending:'Göndərilir…', apps:'Və ya tətbiqi yükləyin → "Partnyor" bölməsi:', privacy:'Məxfilik siyasəti',
+    ok:'Təşəkkür edirik! Qeydiyyatınız qəbul olundu. Tezliklə sizinlə əlaqə saxlayacağıq. Şəkilləri WhatsApp və ya Instagram Direct ilə göndərə bilərsiniz.',
+    need:'Zəhmət olmasa, ad, soyad, xidmət, biznesin adı və telefon nömrəsini yazın.', rate:'Çox müraciət göndərildi. Bir az sonra yenidən cəhd edin.',
+    fail:'Göndərmək alınmadı. İnterneti yoxlayıb yenidən cəhd edin və ya Instagram-da @toyolsunwedding səhifəsinə yazın.'
+  },
+  ru: {
+    h1:'Разместите свой свадебный бизнес бесплатно',
+    lead:'Toy Olsun — приложение свадебных услуг Азербайджана. Клиенты находят вас здесь и связываются напрямую.',
+    p1:'✅ Полностью бесплатно, без комиссии', p2:'📞 Клиент звонит напрямую, пишет в WhatsApp и в чат',
+    p3:'📸 Ваши фото, цены и контакты на одной странице', p4:'⚡ Зарегистрируйтесь, мы свяжемся с вами в течение 24 часов',
+    free:'100% БЕСПЛАТНО · БЕЗ КОМИССИИ', pick:'Выберите…', lSurname:'Фамилия', after:'После регистрации мы позвоним вам в течение 24 часов и вместе оформим вашу страницу.',
+    lBusiness:'Название бизнеса', lCategory:'Ваша услуга', lPhone:'Телефон / WhatsApp', lName:'Имя', lInsta:'Страница в Instagram',
+    lCity:'Город', lPrice:'Цена от', lNote:'Коротко о вас', opt:'(необязательно)',
+    cVenues:'Свадебный зал', cArtists:'Певец / артист', cMedia:'Фото / видео', cDress:'Свадебный салон', cFlowers:'Цветочный магазин',
+    cDecor:'Декор', cCars:'Свадебные авто / кортеж', cTourism:'Медовый месяц / туризм', cOther:'Другое',
+    send:'Бесплатная регистрация', sending:'Отправка…', apps:'Или скачайте приложение → раздел «Партнёр»:', privacy:'Политика конфиденциальности',
+    ok:'Спасибо! Регистрация принята. Мы скоро свяжемся с вами. Фото можно отправить в WhatsApp или в Instagram Direct.',
+    need:'Пожалуйста, укажите имя, фамилию, услугу, название бизнеса и телефон.', rate:'Слишком много заявок. Попробуйте чуть позже.',
+    fail:'Не удалось отправить. Проверьте интернет и попробуйте снова или напишите нам в Instagram @toyolsunwedding.'
+  }
+};
+let lang = 'az';
+function setLang(l) {
+  lang = l; document.documentElement.lang = l;
+  document.querySelectorAll('[data-t]').forEach(el => { const v = T[l][el.dataset.t]; if (v) el.textContent = v; });
+  document.querySelectorAll('.lang button').forEach(b => b.classList.toggle('on', b.dataset.l === l));
+}
+document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.l)));
+if ((navigator.language || '').toLowerCase().startsWith('ru')) setLang('ru');
+
+const form = document.getElementById('f'), msg = document.getElementById('msg'), btn = form.querySelector('.send');
+function show(kind, text) { msg.className = 'msg ' + kind; msg.textContent = text; }
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(form).entries());
+  data.lang = lang;
+  if (!data.name.trim() || !data.surname.trim() || !data.category || !data.business.trim() || data.phone.replace(/\D/g, '').length < 7) { show('err', T[lang].need); return; }
+  btn.disabled = true; btn.textContent = T[lang].sending; msg.className = 'msg';
+  try {
+    const res = await fetch(ENDPOINT, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(data) });
+    const out = await res.json().catch(() => ({}));
+    if (res.ok && out.ok) { form.reset(); form.city.value = lang === 'ru' ? 'Баку' : 'Bakı'; show('ok', T[lang].ok); }
+    else show('err', res.status === 429 ? T[lang].rate : res.status === 400 ? T[lang].need : T[lang].fail);
+  } catch { show('err', T[lang].fail); }
+  btn.disabled = false; btn.textContent = T[lang].send;
+});
+</script>
+</body>
+</html>
