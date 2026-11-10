@@ -929,6 +929,12 @@ function ServiceForm({
     );
 }
 
+const DELETE_FAILED = {
+    az: { title: 'Hesab silinmədi', msg: 'Xəta baş verdi. İnterneti yoxlayıb yenidən cəhd edin.' },
+    ru: { title: 'Аккаунт не удалён', msg: 'Произошла ошибка. Проверьте интернет и попробуйте ещё раз.' },
+    en: { title: 'Account not deleted', msg: 'Something went wrong. Check your connection and try again.' },
+} as const;
+
 function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () => void; onClose: () => void }) {
     const insets = useSafeAreaInsets();
     const t = PORTAL_TEXT[lang];
@@ -1068,6 +1074,7 @@ function Dashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () =
                 }
             }
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert(DELETE_FAILED[lang].title, DELETE_FAILED[lang].msg);
         } finally {
             setDeletingAccount(false);
         }

@@ -418,6 +418,12 @@ function CustomerAuthScreen({ lang, onAuthed }: { lang: Language; onAuthed: () =
 // ============================================================
 // CUSTOMER DASHBOARD (My Orders with cancel + Account Settings)
 // ============================================================
+const DELETE_FAILED = {
+    az: { title: 'Hesab silinmədi', msg: 'Xəta baş verdi. İnterneti yoxlayıb yenidən cəhd edin.' },
+    ru: { title: 'Аккаунт не удалён', msg: 'Произошла ошибка. Проверьте интернет и попробуйте ещё раз.' },
+    en: { title: 'Account not deleted', msg: 'Something went wrong. Check your connection and try again.' },
+} as const;
+
 function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogout: () => void; onClose: () => void }) {
     const t = CUSTOMER_TEXT[lang];
     const [userId, setUserId] = useState<string | null>(null);
@@ -497,6 +503,7 @@ function CustomerDashboard({ lang, onLogout, onClose }: { lang: Language; onLogo
         } catch (e) {
             console.error('Delete account error:', e);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert(DELETE_FAILED[lang].title, DELETE_FAILED[lang].msg);
         } finally {
             setDeletingAccount(false);
         }
