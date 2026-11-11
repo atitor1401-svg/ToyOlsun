@@ -88,6 +88,16 @@
   footer { margin-top:auto; padding-top:22px; text-align:center; font-size:12px; color:var(--muted); }
   footer a { color:var(--muted); }
 </style>
+<!-- Meta Pixel (Toy Olsun Web): page view + Lead on a sent sign-up. No form data is sent to Meta. -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init','1109887218557024');fbq('track','PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=1109887218557024&ev=PageView&noscript=1"></noscript>
 </head>
 <body>
 <div class="wrap">
@@ -264,7 +274,7 @@ form.addEventListener('submit', async (e) => {
   try {
     const res = await fetch(ENDPOINT, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(data) });
     const out = await res.json().catch(() => ({}));
-    if (res.ok && out.ok) { step = 4; render(); $('#perks').style.display = 'none'; window.scrollTo({ top:0, behavior:'smooth' }); }
+    if (res.ok && out.ok) { try { fbq('track', 'Lead', { content_category: category }); } catch {} step = 4; render(); $('#perks').style.display = 'none'; window.scrollTo({ top:0, behavior:'smooth' }); }
     else showErr(res.status === 429 ? T[lang].rate : T[lang].fail);
   } catch { showErr(T[lang].fail); }
   next.disabled = false; if (step === 3) next.textContent = T[lang].send;
