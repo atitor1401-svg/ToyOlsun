@@ -270,7 +270,7 @@ form.addEventListener('submit', async (e) => {
   next.disabled = false; if (step === 3) next.textContent = T[lang].send;
 });
 
-if ((navigator.language || '').toLowerCase().startsWith('ru')) setLang('ru'); else render();
+render(); // always open in Azerbaijani; RU is one tap away
 </script>
 </body>
 </html>
